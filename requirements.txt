@@ -1,0 +1,8 @@
+PyQt5==5.15.11
+PyMySQL==1.1.0
+redis==5.0.1
+Pillow==11.1.0  # 用于生成图片验证码
+captcha==0.5.0  # 验证码生成库 
+selenium~=4.29.0
+pyowm==3.3.0
+requests~=2.32.3
