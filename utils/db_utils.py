@@ -92,6 +92,21 @@ class DatabaseConnection:
                 """)
                 logging.info("cookies表创建成功")
 
+                # 创建area_codes表
+                logging.info("创建area_codes表...")
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS area_codes (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        region VARCHAR(50) NOT NULL,
+                        province VARCHAR(50) NOT NULL,
+                        city VARCHAR(50),
+                        code INT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE KEY unique_area (region, province, city)
+                    )
+                """)
+                logging.info("area_codes表创建成功")
+
             self.connection.commit()
             logging.info("所有数据库表创建成功")
             
@@ -108,6 +123,12 @@ class DatabaseConnection:
                     logging.info("cookies表已存在")
                 else:
                     logging.error("cookies表创建失败")
+                    
+                cursor.execute("SHOW TABLES LIKE 'area_codes'")
+                if cursor.fetchone():
+                    logging.info("area_codes表已存在")
+                else:
+                    logging.error("area_codes表创建失败")
                     
         except Exception as e:
             logging.error(f"创建数据库表失败: {str(e)}")
@@ -164,6 +185,76 @@ class DatabaseConnection:
         except Exception as e:
             logging.error(f"获取cookies失败: {str(e)}")
             return None
+
+    def save_area_code(self, region, province, city, code):
+        """
+        保存地区码到数据库
+        :param region: 地区（如：华北、华东等）
+        :param province: 省份
+        :param city: 城市（可以为None）
+        :param code: 地区码
+        :return: 是否保存成功
+        """
+        try:
+            with self.connection.cursor() as cursor:
+                sql = """
+                    INSERT INTO area_codes (region, province, city, code)
+                    VALUES (%s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE code = %s
+                """
+                cursor.execute(sql, (region, province, city, code, code))
+                self.connection.commit()
+                return True
+        except Exception as e:
+            logging.error(f"保存地区码失败: {str(e)}")
+            return False
+
+    def get_area_code(self, region=None, province=None, city=None):
+        """
+        从数据库获取地区码
+        :param region: 地区（如：华北、华东等）
+        :param province: 省份
+        :param city: 城市
+        :return: 地区码，如果未找到返回None
+        """
+        try:
+            with self.connection.cursor() as cursor:
+                conditions = []
+                params = []
+                
+                if region:
+                    conditions.append("region = %s")
+                    params.append(region)
+                if province:
+                    conditions.append("province = %s")
+                    params.append(province)
+                if city:
+                    conditions.append("city = %s")
+                    params.append(city)
+                
+                where_clause = " AND ".join(conditions) if conditions else "1"
+                sql = f"SELECT code FROM area_codes WHERE {where_clause}"
+                
+                cursor.execute(sql, tuple(params))
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            logging.error(f"获取地区码失败: {str(e)}")
+            return None
+
+    def verify_area_code(self, code):
+        """
+        验证地区码是否存在于数据库中
+        :param code: 地区码
+        :return: 是否存在
+        """
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute("SELECT 1 FROM area_codes WHERE code = %s", (code,))
+                return cursor.fetchone() is not None
+        except Exception as e:
+            logging.error(f"验证地区码失败: {str(e)}")
+            return False
 
     def close(self):
         """关闭数据库连接"""

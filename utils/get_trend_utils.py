@@ -1,17 +1,27 @@
 import time
-from db_utils import DatabaseConnection
-from get_index_cookie_utils import get_index_cookie, get_login_user_info
+from selenium import webdriver
+from utils.db_utils import DatabaseConnection
+from utils.get_index_cookie_utils import get_index_cookie, get_login_user_info
 from datetime import datetime, date
 import pandas as pd
 import requests
 import json
 import random
 import urllib3
+import os
+import pickle
+from selenium.webdriver.common.by import By
 from requests.utils import cookiejar_from_dict
+from config.city_codes import get_all_regions, get_region_provinces, get_province_code, get_city_code, get_province_cities
+import logging
+import gc
 
 
 # 禁用SSL警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# 添加cookies文件路径
+COOKIES_FILE = "cookies.pkl"
 
 
 def save_cookies(cookies, username):
@@ -35,6 +45,56 @@ def load_cookies(username):
     except Exception as e:
         print(f"加载Cookies失败: {e}")
     return None
+
+
+def openbrowser():
+    """通过浏览器获取新的cookies"""
+    url = "https://index.baidu.com/v2/index.html#/"
+    browser = webdriver.Chrome()
+    try:
+        browser.get(url)
+        browser.maximize_window()
+        
+        # 点击登录按钮
+        browser.find_element(By.XPATH, '//*[@id="home"]/div[2]/div[1]/div[2]/div[1]/div[4]/span/span').click()
+        time.sleep(2)
+        
+        # 获取登录表单元素
+        uname = browser.find_element(By.XPATH, '//*[@id="TANGRAM__PSP_4__userName"]')
+        upassword = browser.find_element(By.XPATH, '//*[@id="TANGRAM__PSP_4__password"]')
+        ulogin = browser.find_element(By.XPATH, '//*[@id="TANGRAM__PSP_4__submit"]')
+        
+        # 读取账号信息
+        try:
+            with open("../resources/user_info.txt") as f:
+                account = [line.strip() for line in f.readlines()]
+        except Exception as e:
+            print(f"读取账号信息失败: {e}")
+            return None
+            
+        # 输入账号密码
+        uname.clear()
+        uname.send_keys(account[0])
+        time.sleep(3)
+        upassword.clear()
+        upassword.send_keys(account[1])
+        time.sleep(3)
+        ulogin.click()
+        time.sleep(10)
+        
+        # 等待用户手动验证
+        input("请完成登录验证后按回车继续...")
+        
+        # 获取cookies
+        cookies = browser.get_cookies()
+        print("成功获取新的Cookies")
+        return cookies
+        
+    except Exception as e:
+        print(f"浏览器操作失败: {e}")
+        return None
+    finally:
+        browser.quit()
 
 
 def get_random_headers():
@@ -163,195 +223,454 @@ def get_ptbk(uniqid, cookies=None):
 
 def save_data_to_excel(data, keyword):
     """
-    保存数据到Excel文件
+    保存数据到Excel文件，使用更保守的内存管理
     :param data: 数据列表
     :param keyword: 关键词
     """
-    # 创建DataFrame
-    df = pd.DataFrame(data)
-
-    # 创建文件名
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{keyword}_{timestamp}.xlsx"
-
-    # 保存到Excel
-    df.to_excel("E:\\BaiDuIndex\\data\\"+filename, index=False)
-    print(f"数据已保存到Excel文件: {filename}")
-    return filename
-
-
-def get_trend_utils(username):
-    """
-    获取百度指数趋势数据
-    :param username: 用户名
-    :return: 趋势数据
-    """
-    # 尝试从数据库加载cookies
-    cookies = load_cookies(username)
-    # 如果没有保存的cookies或cookies无效，则重新登录
-    if not cookies:
-        print("需要重新登录...")
-        username, password = get_login_user_info()
-        if not username or not password:
-            print("获取用户信息失败")
-            return None
-        cookies = get_index_cookie(username, password)
-        if cookies:
-            save_cookies(cookies, username)
-        else:
-            print("登录失败，请检查用户名和密码是否正确")
-            return None
-
-    word = input("请输入要查询的关键词: ")
-
     try:
-        # 设置日期范围（默认最近30天）
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        start_date = (datetime.now() - pd.Timedelta(days=3600)).strftime('%Y-%m-%d')
+        # 从数据中获取地区名称
+        area_name = data[0]["地区"] if data and "地区" in data[0] else "全国"
+        
+        # 创建文件名（地名+关键词+采集时间）
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{area_name}_{keyword}_{timestamp}.xlsx"
+        filepath = os.path.join("E:\\BaiDuIndex\\data\\trend", filename)
+        
+        # 确保目录存在
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        # 直接转换为DataFrame并保存，避免分批处理
+        df = pd.DataFrame(data)
+        df.to_excel(filepath, index=False)
+        
+        print(f"数据已保存到Excel文件: {filename}")
+        
+        # 立即清理DataFrame
+        del df
+        gc.collect()
+        
+        return True
+        
+    except Exception as e:
+        print(f"保存Excel文件失败: {e}")
+        return False
+    finally:
+        # 确保清理所有临时对象
+        if 'df' in locals():
+            del df
+        gc.collect()
 
-        # 设置地区（默认全国）
-        area = 0
 
-        # 构建API URL
-        url = f"https://index.baidu.com/api/SearchApi/index?area={area}&word=[[%7B%22name%22:%22{word}%22,%22wordType%22:1%7D]]&startDate={start_date}&endDate={end_date}"
-        print("请求URL:", url)  # 调试信息
-
-        # 获取数据
-        print("正在获取数据...")
-        response_text = get_html(url, cookies)
-        if not response_text:
-            print("获取数据失败，响应为空")
-            return None
-
+def select_area(region=None, province=None, city=None):
+    """选择地区
+    Args:
+        region: 区域名称（如：华东、华北等）
+        province: 省份名称
+        city: 城市名称（可选）
+    Returns:
+        tuple: (area_code, area_name) 地区代码和地区名称
+    """
+    try:
+        # 如果没有提供任何参数，返回全国
+        if not region:
+            return 0, "全国"
+            
+        # 获取省份列表
+        provinces = get_region_provinces(region)
+        if not provinces or not province or province not in provinces:
+            logging.error(f"无效的省份选择: region={region}, province={province}")
+            return 0, "全国"
+            
+        # 如果没有指定城市，返回省份代码
+        if not city:
+            try:
+                # 获取省份代码
+                db = DatabaseConnection()
+                try:
+                    code = db.get_area_code(region=region, province=province)
+                    if code is not None:  # 直接使用返回的代码
+                        return code, province
+                finally:
+                    db.close()
+                
+                # 如果数据库查询失败，尝试使用配置文件中的代码
+                province_code = get_province_code(province)
+                if province_code:
+                    return province_code, province
+                
+                logging.error(f"无法获取省份代码: {province}")
+                return 0, "全国"
+            except Exception as e:
+                logging.error(f"获取省份代码失败: {str(e)}")
+                return 0, "全国"
+            
+        # 如果指定了城市，获取城市代码
+        cities = get_province_cities(province)
+        if not cities or city not in cities:
+            logging.error(f"无效的城市选择: province={province}, city={city}")
+            return 0, "全国"
+            
         try:
-            data = json.loads(response_text)
-
-            if data['status'] != 0:
-                print(f"获取数据失败: {data}")
-                # 如果是因为登录状态失效，删除数据库中的cookies并重试
-                if data.get('message') == 'not login':
-                    print("登录状态已失效，需要重新登录")
-                    db = DatabaseConnection()
-                    db.delete_cookies(username)
-                    return get_trend_utils(username)
-                return None
-
-            # 检查数据结构
-            if 'data' not in data:
-                print(f"API返回数据格式错误: {data}")
-                return None
-
-            if 'uniqid' not in data['data']:
-                print(f"API返回数据缺少uniqid: {data}")
-                return None
-
-            if 'userIndexes' not in data['data'] or not data['data']['userIndexes']:
-                print(f"API返回数据缺少userIndexes: {data}")
-                return None
-
-            if 'all' not in data['data']['userIndexes'][0]:
-                print(f"API返回数据缺少all字段: {data}")
-                return None
-
-            # 获取加密数据和uniqid
-            encrypted_data = data['data']['userIndexes'][0]['all']['data']
-            uniqid = data['data']['uniqid']
-
-
-            if not encrypted_data:
-                print("未获取到指数数据")
-                return None
-
-            # 等待一段时间
-            time.sleep(random.uniform(2, 4))
-
-            # 获取解密密钥
-            print("正在解密数据...")
-            ptbk = get_ptbk(uniqid, cookies)
-            if not ptbk:
-                print("获取解密密钥失败")
-                return None
-
-            # 解密数据
-            result = decrypt(ptbk, encrypted_data)
-            if not result:
-                print("数据解密失败")
-                return None
-
-            result = result.split(',')
-
-            # 获取实际的数据点数量
-            data_points = len(result)
-            print(f"获取到 {data_points} 个数据点")
-
-            # 生成日期列表
-            start = start_date.split("-")
-            end = end_date.split("-")
-            start_date = date(int(start[0]), int(start[1]), int(start[2]))
-            end_date = date(int(end[0]), int(end[1]), int(end[2]))  # 使用 date 而不是 datetime.date
-
-            # 计算日期间隔
-            total_days = (end_date - start_date).days
-            if total_days <= 0:
-                print("日期范围无效")
-                return None
-
-            # 计算每天的数据点数量
-            points_per_day = data_points / total_days
-
-            # 构建数据
-            sheet_data = []
-            for i in range(data_points):
-                ydict = {}
-                # 根据数据点索引计算对应的日期
-                days_offset = int(i / points_per_day)
-                current_date = start_date + pd.Timedelta(days=days_offset)
-                ydict["日期"] = current_date
-                ydict["指数"] = result[i]
-                ydict["地区"] = "全国"
-                ydict["关键词"] = word
-                sheet_data.append(ydict)
-
-            # 转换为DataFrame
-            data = pd.DataFrame.from_dict(sheet_data)
-
-            if not data.empty:
-                print(f"获取到 {len(data)} 个数据点")
-                # 保存到Excel
-                excel_file = save_data_to_excel(data.to_dict('records'), word)
-                print(f"数据已保存到Excel文件: {excel_file}")
-                return data.to_dict('records')
-            else:
-                print("获取图表数据失败")
-                return None
-
-        except json.JSONDecodeError as e:
-            print(f"JSON解析错误: {e}")
-            print(f"响应内容: {response_text}")
-            return None
+            # 获取城市代码
+            db = DatabaseConnection()
+            try:
+                code = db.get_area_code(region=region, province=province, city=city)
+                if code is not None:  # 直接使用返回的代码
+                    return code, f"{province}{city}"
+            finally:
+                db.close()
+            
+            # 如果数据库查询失败，尝试使用配置文件中的代码
+            city_code = get_city_code(province, city)
+            if city_code:
+                return city_code, f"{province}{city}"
+            
+            logging.error(f"无法获取城市代码: {province}{city}")
+            return 0, "全国"
+        except Exception as e:
+            logging.error(f"获取城市代码失败: {str(e)}")
+            return 0, "全国"
 
     except Exception as e:
-        print(f"获取数据失败: {str(e)}")
-        print("错误类型:", type(e))  # 调试信息
-        import traceback
-        print("错误堆栈:", traceback.format_exc())  # 调试信息
+        logging.error(f"选择地区失败: {str(e)}")
+        return 0, "全国"  # 发生错误时默认返回全国
+
+
+def get_last_record(db_cursor, keyword, area):
+    """
+    获取数据库中某个关键词和地区的最后一条记录
+    """
+    try:
+        query = """
+        SELECT date, index_value, area, keyword 
+        FROM baidu_index_trends 
+        WHERE keyword = %s AND area = %s 
+        ORDER BY date DESC 
+        LIMIT 1
+        """
+        db_cursor.execute(query, (keyword, area))
+        return db_cursor.fetchone()
+    except Exception as e:
+        logging.error(f"获取最后一条记录失败: {e}")
         return None
+
+
+def check_data_exists(db_cursor, date, keyword, area):
+    """
+    检查特定日期、关键词和地区的数据是否存在
+    """
+    try:
+        query = """
+        SELECT COUNT(*) 
+        FROM baidu_index_trends 
+        WHERE date = %s AND keyword = %s AND area = %s
+        """
+        db_cursor.execute(query, (date, keyword, area))
+        count = db_cursor.fetchone()[0]
+        return count > 0
+    except Exception as e:
+        logging.error(f"检查数据存在失败: {e}")
+        return False
+
+
+def get_missing_dates(db_cursor, keyword, area):
+    """
+    获取数据库最后一条记录到今天之间缺失的日期
+    """
+    try:
+        # 获取最后一条记录的日期
+        query = """
+        SELECT MAX(date) 
+        FROM baidu_index_trends 
+        WHERE keyword = %s AND area = %s
+        """
+        db_cursor.execute(query, (keyword, area))
+        last_date = db_cursor.fetchone()[0]
+        
+        if not last_date:
+            return None, None  # 数据库中没有记录
+            
+        # 计算到今天的日期差
+        today = datetime.now().date()
+        date_diff = (today - last_date).days
+        
+        if date_diff <= 0:
+            return None, None  # 数据已是最新
+            
+        # 计算需要获取的日期范围
+        start_date = last_date + pd.Timedelta(days=1)
+        return start_date.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')
+        
+    except Exception as e:
+        logging.error(f"获取缺失日期失败: {e}")
+        return None, None
+
+
+def save_data_to_db(data):
+    """
+    保存数据到数据库，包含数据比对和当天数据检查
+    :param data: 数据列表，每个元素包含日期、指数、地区、关键词
+    :return: (需要补充的开始日期, 结束日期) 或 (None, None)
+    """
+    db = None
+    cursor = None
+    try:
+        db = DatabaseConnection()
+        cursor = db.connection.cursor()
+        
+        # 创建表（如果不存在）
+        create_table_sql = """
+        CREATE TABLE IF NOT EXISTS baidu_index_trends (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            date DATE NOT NULL,
+            index_value INT NOT NULL,
+            area VARCHAR(50) NOT NULL,
+            keyword VARCHAR(100) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_trend (date, area, keyword)
+        )
+        """
+        cursor.execute(create_table_sql)
+        
+        # 分批处理数据，每批100条
+        batch_size = 100
+        records_to_insert = []
+        inserted_count = 0
+        
+        for i in range(0, len(data), batch_size):
+            batch = data[i:min(i + batch_size, len(data))]
+            current_batch = []
+            
+            for item in batch:
+                date_str = item["日期"].strftime("%Y-%m-%d")
+                keyword = item["关键词"]
+                area = item["地区"]
+                index_value = int(float(item["指数"]))
+                
+                # 检查数据是否已存在
+                if not check_data_exists(cursor, date_str, keyword, area):
+                    current_batch.append((
+                        date_str,
+                        index_value,
+                        area,
+                        keyword
+                    ))
+            
+            # 批量插入当前批次的新数据
+            if current_batch:
+                insert_sql = """
+                INSERT INTO baidu_index_trends (date, index_value, area, keyword)
+                VALUES (%s, %s, %s, %s)
+                """
+                cursor.executemany(insert_sql, current_batch)
+                db.connection.commit()
+                inserted_count += len(current_batch)
+                
+                # 清理当前批次
+                current_batch.clear()
+                gc.collect()
+        
+        if inserted_count > 0:
+            print(f"成功插入 {inserted_count} 条新数据到数据库")
+        
+        # 检查是否需要补充数据
+        if data:
+            missing_start, missing_end = get_missing_dates(cursor, data[0]["关键词"], data[0]["地区"])
+            return missing_start, missing_end
+        
+        return None, None
+        
+    except Exception as e:
+        print(f"保存数据到数据库失败: {e}")
+        if db and db.connection:
+            try:
+                db.connection.rollback()
+            except Exception as rollback_e:
+                print(f"回滚事务失败: {rollback_e}")
+        return None, None
+        
+    finally:
+        # 分别关闭cursor和数据库连接
+        if cursor:
+            try:
+                cursor.close()
+            except Exception as e:
+                print(f"关闭cursor失败: {e}")
+        
+        if db:
+            try:
+                db.close()
+            except Exception as e:
+                print(f"关闭数据库连接失败: {e}")
+        
+        # 清理局部变量
+        if 'current_batch' in locals():
+            del current_batch
+        if 'records_to_insert' in locals():
+            del records_to_insert
+        gc.collect()
+
+
+def process_batch_data(start_date_obj, points_per_day, result_data, keyword, area_name, batch_size=100):
+    """
+    分批处理数据以避免内存问题
+    """
+    processed_data = []
+    total_points = len(result_data)
+    
+    for i in range(0, total_points, batch_size):
+        batch = result_data[i:i + batch_size]
+        for j, value in enumerate(batch):
+            idx = i + j
+            days_offset = int(idx / points_per_day)
+            current_date = start_date_obj + pd.Timedelta(days=days_offset)
+            processed_data.append({
+                "日期": current_date,
+                "指数": value,
+                "地区": area_name,
+                "关键词": keyword
+            })
+            
+        # 及时清理不需要的对象
+        if len(processed_data) >= batch_size * 2:
+            yield processed_data
+            processed_data = []
+    
+    if processed_data:
+        yield processed_data
+
+
+def get_trend_utils(username, keyword, area_code=0, area_name="全国", start_date=None, end_date=None):
+    """
+    一次性获取百度指数趋势数据
+    :return: 趋势数据列表或None（如果发生错误）
+    """
+    try:
+        # 设置日期范围
+        if end_date is None:
+            end_date = datetime.now().strftime('%Y-%m-%d')
+        if start_date is None:
+            start_date = (datetime.now() - pd.Timedelta(days=3650)).strftime('%Y-%m-%d')  # 10年数据
+            
+        logging.info(f"准备获取从 {start_date} 到 {end_date} 的数据")
+        
+        # 获取cookies
+        cookies = load_cookies(username)
+        if not cookies:
+            logging.info("未找到有效cookies，尝试重新登录...")
+            cookies = get_index_cookie(username)
+            if cookies:
+                save_cookies(cookies, username)
+            else:
+                logging.error("登录失败，请检查用户名和密码")
+                return None
+
+        # 构建API URL
+        url = f"https://index.baidu.com/api/SearchApi/index?area={area_code}&word=[[%7B%22name%22:%22{keyword}%22,%22wordType%22:1%7D]]&startDate={start_date}&endDate={end_date}"
+        
+        # 获取数据
+        response_text = get_html(url, cookies)
+        if not response_text:
+            logging.error("获取数据失败")
+            return None
+
+        data = json.loads(response_text)
+        if data['status'] != 0:
+            if data.get('message') == 'not login':
+                db = DatabaseConnection()
+                try:
+                    db.delete_cookies(username)
+                finally:
+                    db.close()
+            logging.error(f"API返回错误: {data.get('message', '未知错误')}")
+            return None
+
+        # 获取加密数据和uniqid
+        encrypted_data = data['data']['userIndexes'][0]['all']['data']
+        uniqid = data['data']['uniqid']
+        if not encrypted_data:
+            logging.error("未获取到加密数据")
+            return None
+
+        # 获取解密密钥
+        ptbk = get_ptbk(uniqid, cookies)
+        if not ptbk:
+            logging.error("获取解密密钥失败")
+            return None
+
+        # 解密数据
+        result = decrypt(ptbk, encrypted_data)
+        if not result:
+            logging.error("数据解密失败")
+            return None
+
+        # 处理数据
+        result_data = result.split(',')
+        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+        data_points = len(result_data)
+        total_days = (datetime.strptime(end_date, '%Y-%m-%d').date() - start_date_obj).days + 1
+        points_per_day = data_points / total_days
+
+        # 一次性处理所有数据
+        all_data = []
+        for i, value in enumerate(result_data):
+            days_offset = int(i / points_per_day)
+            current_date = start_date_obj + pd.Timedelta(days=days_offset)
+            all_data.append({
+                "日期": current_date,
+                "指数": value,
+                "地区": area_name,
+                "关键词": keyword
+            })
+
+        # 保存数据
+        if save_data_to_excel(all_data, keyword):
+            save_data_to_db(all_data)
+
+        return all_data
+
+    except Exception as e:
+        logging.error(f"获取趋势数据失败: {str(e)}")
+        return None
+
+    finally:
+        gc.collect()
+        # 强制清理内存
+        import sys
+        if hasattr(sys, 'exc_clear'):
+            sys.exc_clear()
 
 
 # 测试代码
 if __name__ == "__main__":
     try:
+        # 配置日志
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s'
+        )
+        
         # 获取用户名
         username, _ = get_login_user_info()
         if not username:
-            print("获取用户信息失败")
+            logging.error("获取用户信息失败")
             exit(1)
 
         # 获取趋势数据
         trend_data = get_trend_utils(username)
         if trend_data:
-            print("趋势数据:", trend_data)
+            logging.info("成功获取趋势数据")
         else:
-            print("获取趋势数据失败")
+            logging.error("获取趋势数据失败")
+            
     except Exception as e:
-        print(f"测试过程中出错: {str(e)}")
+        logging.error(f"程序执行出错: {str(e)}")
+        import traceback
+        logging.error(f"错误堆栈: {traceback.format_exc()}")
+        
+    finally:
+        # 强制垃圾回收
+        gc.collect()
+        
+        # 确保程序正常退出
+        logging.info("程序执行完成") 

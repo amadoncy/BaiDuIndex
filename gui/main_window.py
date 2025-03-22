@@ -1,14 +1,64 @@
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel, 
                              QVBoxLayout, QHBoxLayout, QPushButton,
                              QMessageBox, QListWidget, QStackedWidget,
-                             QListWidgetItem, QFrame, QComboBox, QSpinBox)
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSize
+                             QListWidgetItem, QFrame, QComboBox, QSpinBox,
+                             QLineEdit, QProgressBar, QTextEdit)
+from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSize, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QColor, QPalette, QLinearGradient, QPainter, QIcon
 import os
 import logging
 from utils.get_local_weather_utils import get_weather_info
 import requests
 import json
+import pandas as pd
+from datetime import datetime
+from utils.get_trend_utils import get_trend_utils, select_area
+from config.city_codes import get_all_regions, get_region_provinces, get_province_cities
+from utils.get_index_cookie_utils import get_index_cookie, get_login_user_info
+
+class DataCollectionThread(QThread):
+    progress_signal = pyqtSignal(str)
+    finished_signal = pyqtSignal(bool, str)
+
+    def __init__(self, collection_type, username, keyword=None, area_code=0, area_name="全国"):
+        super().__init__()
+        self.collection_type = collection_type
+        self.username = username
+        self.keyword = keyword
+        self.area_code = area_code
+        self.area_name = area_name
+        self._is_running = True
+
+    def stop(self):
+        self._is_running = False
+
+    def run(self):
+        try:
+            if not self._is_running:
+                return
+
+            if self.collection_type == "trend":
+                # 趋势数据采集
+                result = get_trend_utils(self.username, self.keyword, self.area_code, self.area_name)
+                if result and self._is_running:
+                    self.finished_signal.emit(True, "数据采集完成")
+                else:
+                    self.finished_signal.emit(False, "数据采集失败")
+            elif self.collection_type == "portrait":
+                # 人群画像数据采集
+                self.progress_signal.emit("正在采集人群画像数据...")
+                # TODO: 实现人群画像数据采集
+                if self._is_running:
+                    self.finished_signal.emit(True, "人群画像数据采集完成")
+            elif self.collection_type == "demand":
+                # 需求图谱数据采集
+                self.progress_signal.emit("正在采集需求图谱数据...")
+                # TODO: 实现需求图谱数据采集
+                if self._is_running:
+                    self.finished_signal.emit(True, "需求图谱数据采集完成")
+        except Exception as e:
+            if self._is_running:
+                self.finished_signal.emit(False, f"错误: {str(e)}")
 
 class WelcomeWindow(QMainWindow):
     # 定义主题样式
@@ -119,6 +169,7 @@ class WelcomeWindow(QMainWindow):
         self.weather_timer.start(30 * 60 * 1000)  # 30分钟
         # 立即更新一次天气
         self.update_weather()
+        self.collection_thread = None
         
     def update_weather(self):
         """更新天气信息"""
@@ -414,22 +465,395 @@ class WelcomeWindow(QMainWindow):
         """创建数据采集页面"""
         page = QWidget()
         layout = QVBoxLayout(page)
-        label = QLabel("数据采集功能开发中...")
-        label.setFont(QFont("Microsoft YaHei", 16))
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
-        return page
+        layout.setSpacing(20)
+
+        # 创建标题
+        title_label = QLabel("数据采集")
+        title_label.setFont(QFont("Microsoft YaHei", 24, QFont.Bold))
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("""
+            QLabel {
+                color: white;
+                padding: 10px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+            }
+        """)
+        layout.addWidget(title_label)
+
+        # 创建关键词输入框
+        keyword_layout = QHBoxLayout()
+        keyword_label = QLabel("关键词:")
+        keyword_label.setStyleSheet("color: white;")
+        self.keyword_input = QLineEdit()
+        self.keyword_input.setPlaceholderText("请输入要查询的关键词")
+        self.keyword_input.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid rgba(255, 255, 255, 0.5);
+            }
+        """)
+        keyword_layout.addWidget(keyword_label)
+        keyword_layout.addWidget(self.keyword_input)
+        layout.addLayout(keyword_layout)
+
+        # 创建地区选择部分
+        region_layout = QHBoxLayout()
         
-    def create_data_analysis_page(self):
-        """创建数据分析页面"""
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        label = QLabel("数据分析功能开发中...")
-        label.setFont(QFont("Microsoft YaHei", 16))
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
-        return page
+        # 区域选择
+        region_label = QLabel("地区:")
+        region_label.setStyleSheet("color: white;")
+        self.region_combo = QComboBox()
+        self.region_combo.addItem("全国")
+        regions = get_all_regions()
+        self.region_combo.addItems(regions)
+        self.region_combo.setStyleSheet("""
+            QComboBox {
+                padding: 5px;
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                color: white;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                image: url(resources/down_arrow.png);
+                width: 12px;
+                height: 12px;
+            }
+        """)
         
+        # 省份选择
+        self.province_combo = QComboBox()
+        self.province_combo.setEnabled(False)
+        self.province_combo.setStyleSheet(self.region_combo.styleSheet())
+        
+        # 城市选择
+        self.city_combo = QComboBox()
+        self.city_combo.setEnabled(False)
+        self.city_combo.setStyleSheet(self.region_combo.styleSheet())
+        
+        region_layout.addWidget(region_label)
+        region_layout.addWidget(self.region_combo)
+        region_layout.addWidget(self.province_combo)
+        region_layout.addWidget(self.city_combo)
+        layout.addLayout(region_layout)
+
+        # 连接信号
+        self.region_combo.currentIndexChanged.connect(self.on_region_changed)
+        self.province_combo.currentIndexChanged.connect(self.on_province_changed)
+
+        # 创建按钮组
+        button_layout = QHBoxLayout()
+        
+        # 趋势数据按钮
+        self.trend_btn = QPushButton("趋势数据采集")
+        self.trend_btn.setToolTip("收集关键词随时间变化的趋势数据")
+        self.trend_btn.clicked.connect(lambda: self.select_collection_type("trend"))
+        
+        # 人群画像按钮
+        self.portrait_btn = QPushButton("人群画像采集")
+        self.portrait_btn.setToolTip("收集用户群体特征数据")
+        self.portrait_btn.clicked.connect(lambda: self.select_collection_type("portrait"))
+        
+        # 需求图谱按钮
+        self.demand_btn = QPushButton("需求图谱采集")
+        self.demand_btn.setToolTip("收集用户需求关联数据")
+        self.demand_btn.clicked.connect(lambda: self.select_collection_type("demand"))
+
+        # 设置按钮样式
+        for btn in [self.trend_btn, self.portrait_btn, self.demand_btn]:
+            btn.setStyleSheet("""
+                QPushButton {
+                    padding: 10px;
+                    background: rgba(33, 150, 243, 0.8);
+                    border: none;
+                    border-radius: 5px;
+                    color: white;
+                    font-weight: bold;
+                    min-width: 150px;
+                }
+                QPushButton:hover {
+                    background: rgba(33, 150, 243, 1);
+                }
+                QPushButton:pressed {
+                    background: rgba(25, 118, 210, 1);
+                }
+            """)
+            button_layout.addWidget(btn)
+
+        layout.addLayout(button_layout)
+
+        # 添加开始采集按钮
+        start_button_layout = QHBoxLayout()
+        self.start_btn = QPushButton("开始采集")
+        self.start_btn.setEnabled(False)  # 初始状态禁用
+        self.start_btn.setStyleSheet("""
+            QPushButton {
+                padding: 15px;
+                background: rgba(76, 175, 80, 0.8);
+                border: none;
+                border-radius: 5px;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                min-width: 200px;
+            }
+            QPushButton:hover {
+                background: rgba(76, 175, 80, 1);
+            }
+            QPushButton:pressed {
+                background: rgba(56, 142, 60, 1);
+            }
+            QPushButton:disabled {
+                background: rgba(158, 158, 158, 0.8);
+            }
+        """)
+        self.start_btn.clicked.connect(self.start_collection)
+        start_button_layout.addStretch()
+        start_button_layout.addWidget(self.start_btn)
+        start_button_layout.addStretch()
+        layout.addLayout(start_button_layout)
+
+        # 创建进度条
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                text-align: center;
+                color: white;
+            }
+            QProgressBar::chunk {
+                background-color: rgba(33, 150, 243, 0.8);
+            }
+        """)
+        self.progress_bar.hide()
+        layout.addWidget(self.progress_bar)
+
+        # 创建结果显示区域
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setStyleSheet("""
+            QTextEdit {
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 5px;
+                color: white;
+                padding: 10px;
+            }
+        """)
+        layout.addWidget(self.result_text)
+
+        return page
+
+    def on_region_changed(self):
+        """处理区域选择变化"""
+        self.province_combo.clear()
+        self.city_combo.clear()
+        
+        if self.region_combo.currentText() == "全国":
+            self.province_combo.setEnabled(False)
+            self.city_combo.setEnabled(False)
+            return
+        
+        self.province_combo.setEnabled(True)
+        provinces = get_region_provinces(self.region_combo.currentText())
+        self.province_combo.addItems(provinces)
+
+    def on_province_changed(self):
+        """处理省份选择变化"""
+        self.city_combo.clear()
+        
+        if not self.province_combo.currentText():
+            self.city_combo.setEnabled(False)
+            return
+        
+        self.city_combo.setEnabled(True)
+        cities = get_province_cities(self.province_combo.currentText())
+        self.city_combo.addItems(cities)
+
+    def select_collection_type(self, collection_type):
+        """选择数据采集类型"""
+        self.current_collection_type = collection_type
+        self.start_btn.setEnabled(True)
+        
+        # 定义基础样式
+        base_style = """
+            QPushButton {
+                padding: 10px;
+                background: rgba(33, 150, 243, 0.8);
+                border: none;
+                border-radius: 5px;
+                color: white;
+                font-weight: bold;
+                min-width: 150px;
+            }
+            QPushButton:hover {
+                background: rgba(33, 150, 243, 1);
+            }
+            QPushButton:pressed {
+                background: rgba(25, 118, 210, 1);
+            }
+        """
+        
+        # 定义选中样式
+        selected_style = """
+            QPushButton {
+                padding: 10px;
+                background: rgba(33, 150, 243, 1);
+                border: 2px solid white;
+                border-radius: 5px;
+                color: white;
+                font-weight: bold;
+                min-width: 150px;
+            }
+            QPushButton:hover {
+                background: rgba(33, 150, 243, 1);
+            }
+            QPushButton:pressed {
+                background: rgba(25, 118, 210, 1);
+            }
+        """
+        
+        # 更新按钮状态
+        type_map = {
+            "trend": self.trend_btn,
+            "portrait": self.portrait_btn,
+            "demand": self.demand_btn
+        }
+        
+        # 重置所有按钮样式
+        for btn in type_map.values():
+            btn.setStyleSheet(base_style)
+            
+        # 设置选中按钮样式
+        if collection_type in type_map:
+            type_map[collection_type].setStyleSheet(selected_style)
+
+    def start_collection(self):
+        """开始数据采集"""
+        try:
+            if not self.username:
+                QMessageBox.warning(self, "错误", "用户未登录")
+                return
+
+            if not self.keyword_input.text():
+                QMessageBox.warning(self, "错误", "请输入关键词")
+                return
+
+            if not hasattr(self, 'current_collection_type'):
+                QMessageBox.warning(self, "错误", "请选择采集类型")
+                return
+
+            # 获取地区信息
+            region = self.region_combo.currentText()
+            province = self.province_combo.currentText() if self.province_combo.isEnabled() else None
+            city = self.city_combo.currentText() if self.city_combo.isEnabled() else None
+            
+            # 获取地区代码
+            area_code, area_name = select_area(
+                region if region != "全国" else None,
+                province,
+                city
+            )
+
+            # 如果有正在运行的线程，先停止它
+            if self.collection_thread and self.collection_thread.isRunning():
+                self.collection_thread.stop()
+                self.collection_thread.wait()
+
+            # 创建新的数据采集线程
+            self.collection_thread = DataCollectionThread(
+                self.current_collection_type,
+                self.username,
+                self.keyword_input.text(),
+                area_code,
+                area_name
+            )
+            self.collection_thread.progress_signal.connect(self.update_progress)
+            self.collection_thread.finished_signal.connect(self.collection_finished)
+            
+            # 禁用所有按钮
+            self.trend_btn.setEnabled(False)
+            self.portrait_btn.setEnabled(False)
+            self.demand_btn.setEnabled(False)
+            self.start_btn.setEnabled(False)
+            
+            # 开始采集
+            self.progress_bar.setMaximum(0)
+            self.progress_bar.show()
+            self.result_text.clear()
+            self.result_text.append(f"正在采集数据...\n采集类型: {self.get_collection_type_name()}\n地区: {area_name}")
+            self.collection_thread.start()
+
+        except Exception as e:
+            logging.error(f"启动数据采集时发生错误: {str(e)}")
+            QMessageBox.warning(self, "错误", f"启动数据采集失败: {str(e)}")
+            self.enable_all_buttons()
+
+    def get_collection_type_name(self):
+        """获取采集类型的中文名称"""
+        type_names = {
+            "trend": "趋势数据",
+            "portrait": "人群画像",
+            "demand": "需求图谱"
+        }
+        return type_names.get(self.current_collection_type, "未知类型")
+
+    def collection_finished(self, success, message):
+        """采集完成处理"""
+        try:
+            self.progress_bar.setMaximum(100)
+            self.progress_bar.setValue(100 if success else 0)
+            self.result_text.append(message)
+            
+            # 使用QTimer延迟启用按钮，给界面一些时间处理完成事件
+            QTimer.singleShot(100, self.enable_all_buttons)
+            
+            # 隐藏进度条
+            self.progress_bar.hide()
+
+            if success:
+                QMessageBox.information(self, "成功", message)
+            else:
+                QMessageBox.warning(self, "错误", message)
+
+            # 清理线程
+            if self.collection_thread:
+                self.collection_thread.stop()
+                self.collection_thread.wait()
+                self.collection_thread = None
+
+        except Exception as e:
+            logging.error(f"处理采集完成事件时发生错误: {str(e)}")
+            self.enable_all_buttons()
+
+    def enable_all_buttons(self):
+        """启用所有按钮"""
+        try:
+            self.trend_btn.setEnabled(True)
+            self.portrait_btn.setEnabled(True)
+            self.demand_btn.setEnabled(True)
+            self.start_btn.setEnabled(True)
+        except Exception as e:
+            logging.error(f"启用按钮时发生错误: {str(e)}")
+
+    def update_progress(self, message):
+        """更新进度信息"""
+        try:
+            self.result_text.append(message)
+        except Exception as e:
+            logging.error(f"更新进度信息时发生错误: {str(e)}")
+
     def create_data_display_page(self):
         """创建数据展示页面"""
         page = QWidget()
@@ -828,8 +1252,15 @@ class WelcomeWindow(QMainWindow):
     def closeEvent(self, event):
         """窗口关闭事件"""
         try:
+            # 停止正在运行的线程
+            if self.collection_thread and self.collection_thread.isRunning():
+                self.collection_thread.stop()
+                self.collection_thread.wait()
+            
             # 停止天气更新定时器
-            self.weather_timer.stop()
+            if hasattr(self, 'weather_timer'):
+                self.weather_timer.stop()
+            
             # 保存当前设置
             self.save_settings()
         except Exception as e:
@@ -875,3 +1306,53 @@ class WelcomeWindow(QMainWindow):
                     weather_combo.setCurrentText(settings['weather_interval'])
         except Exception as e:
             logging.error(f"加载设置失败: {str(e)}") 
+
+    def create_data_analysis_page(self):
+        """创建数据分析页面"""
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setSpacing(20)
+
+        # 创建标题
+        title_label = QLabel("数据分析")
+        title_label.setFont(QFont("Microsoft YaHei", 24, QFont.Bold))
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("""
+            QLabel {
+                color: white;
+                padding: 10px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+            }
+        """)
+        layout.addWidget(title_label)
+
+        # 添加分析功能说明
+        info_label = QLabel("""
+        数据分析功能包括：
+        1. 趋势分析：分析关键词搜索量的变化趋势
+        2. 地域分布：分析不同地区的搜索热度差异
+        3. 相关性分析：分析不同关键词之间的相关性
+        4. 预测分析：基于历史数据预测未来趋势
+        """)
+        info_label.setStyleSheet("""
+            QLabel {
+                color: white;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                padding: 20px;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+        """)
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+
+        # 添加开发中提示
+        dev_label = QLabel("此功能正在开发中，敬请期待...")
+        dev_label.setStyleSheet("color: white; font-size: 16px;")
+        dev_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(dev_label)
+
+        layout.addStretch()
+        return page 
