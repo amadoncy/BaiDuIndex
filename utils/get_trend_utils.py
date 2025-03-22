@@ -165,7 +165,7 @@ def get_html(url, cookies=None, retry_count=3):
         print(f"URL: {url}")
         print(f"Headers: {headers}")
         print(f"Cookies: {cookies}")
-        return None
+    return None
 
 
 def decrypt(t, e):
@@ -258,7 +258,6 @@ def save_data_to_excel(data, keyword):
         # 确保清理所有临时对象
         if 'df' in locals():
             del df
-        gc.collect()
 
 
 def select_area(region=None, province=None, city=None):
@@ -564,7 +563,7 @@ def get_trend_utils(username, keyword, area_code=0, area_name="全国", start_da
             else:
                 logging.error("登录失败，请检查用户名和密码")
                 return None
-
+        
         # 构建API URL
         url = f"https://index.baidu.com/api/SearchApi/index?area={area_code}&word=[[%7B%22name%22:%22{keyword}%22,%22wordType%22:1%7D]]&startDate={start_date}&endDate={end_date}"
         
@@ -573,7 +572,7 @@ def get_trend_utils(username, keyword, area_code=0, area_name="全国", start_da
         if not response_text:
             logging.error("获取数据失败")
             return None
-
+            
         data = json.loads(response_text)
         if data['status'] != 0:
             if data.get('message') == 'not login':
@@ -584,26 +583,26 @@ def get_trend_utils(username, keyword, area_code=0, area_name="全国", start_da
                     db.close()
             logging.error(f"API返回错误: {data.get('message', '未知错误')}")
             return None
-
+            
         # 获取加密数据和uniqid
         encrypted_data = data['data']['userIndexes'][0]['all']['data']
         uniqid = data['data']['uniqid']
         if not encrypted_data:
             logging.error("未获取到加密数据")
             return None
-
+        
         # 获取解密密钥
         ptbk = get_ptbk(uniqid, cookies)
         if not ptbk:
             logging.error("获取解密密钥失败")
             return None
-
+        
         # 解密数据
         result = decrypt(ptbk, encrypted_data)
         if not result:
             logging.error("数据解密失败")
             return None
-
+            
         # 处理数据
         result_data = result.split(',')
         start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()

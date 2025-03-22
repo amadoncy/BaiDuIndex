@@ -5,12 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="ef414e32-a168-4159-b628-41a408d65348" name="更改" comment="dev 0.2">
+      <change beforePath="$PROJECT_DIR$/.idea/BaiDuIndex.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/BaiDuIndex.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/养老_20250321_224502.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/main_window.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/db_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/db_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/get_index_cookie_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/get_index_cookie_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gui/loginwindow.py" beforeDir="false" afterPath="$PROJECT_DIR$/gui/loginwindow.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/utils/get_trend_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/get_trend_utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -34,12 +32,12 @@
     &quot;assignee&quot;: &quot;amadoncy&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/amadoncy/BaiDuIndex.git",
-    "accountId": "c9fafdf4-acd9-47dc-a6c8-7cbd1c2fd3a7"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/amadoncy/BaiDuIndex.git&quot;,
+    &quot;accountId&quot;: &quot;c9fafdf4-acd9-47dc-a6c8-7cbd1c2fd3a7&quot;
   }
-}]]></component>
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 3
 }</component>
@@ -49,42 +47,42 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.db_utils.executor": "Run",
-    "Python.get_index_cookie.executor": "Run",
-    "Python.get_index_cookie_utils (1).executor": "Run",
-    "Python.get_index_cookie_utils.executor": "Run",
-    "Python.get_local_weather_utils.executor": "Run",
-    "Python.get_trend_utils.executor": "Run",
-    "Python.init_area_codes.executor": "Run",
-    "Python.main.executor": "Run",
-    "Python.test_db_connection.executor": "Run",
-    "Python.update_city_data.executor": "Run",
-    "Python.百度指数_趋势研究_搜索指数.executor": "Run",
-    "Python.采集百度指数 (1).executor": "Run",
-    "Python.采集百度指数 (2).executor": "Run",
-    "Python.采集百度指数.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "master",
-    "last_opened_file_path": "E:/BaiDuIndex",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.db_utils.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_index_cookie.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_index_cookie_utils (1).executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_index_cookie_utils.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_local_weather_utils.executor&quot;: &quot;Run&quot;,
+    &quot;Python.get_trend_utils.executor&quot;: &quot;Run&quot;,
+    &quot;Python.init_area_codes.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test_db_connection.executor&quot;: &quot;Run&quot;,
+    &quot;Python.update_city_data.executor&quot;: &quot;Run&quot;,
+    &quot;Python.百度指数_趋势研究_搜索指数.executor&quot;: &quot;Run&quot;,
+    &quot;Python.采集百度指数 (1).executor&quot;: &quot;Run&quot;,
+    &quot;Python.采集百度指数 (2).executor&quot;: &quot;Run&quot;,
+    &quot;Python.采集百度指数.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;last_opened_file_path&quot;: &quot;E:/BaiDuIndex&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;project.propVCSSupport.DirectoryMappings&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "DatabaseDriversLRU": [
-      "mysql",
-      "redis"
+  &quot;keyToStringList&quot;: {
+    &quot;DatabaseDriversLRU&quot;: [
+      &quot;mysql&quot;,
+      &quot;redis&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="E:\BaiDuIndex" />
@@ -254,6 +252,7 @@
       <workItem from="1742570038102" duration="929000" />
       <workItem from="1742619273888" duration="168000" />
       <workItem from="1742619457081" duration="14132000" />
+      <workItem from="1742651767055" duration="826000" />
     </task>
     <task id="LOCAL-00001" summary="dev 0.1">
       <option name="closed" value="true" />
@@ -364,7 +363,7 @@
     <SUITE FILE_PATH="coverage/BaiDuIndex$__1_.coverage" NAME="采集百度指数 (1) 覆盖结果" MODIFIED="1742558392850" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/AppData/Local/Temp/Rar$DIa79488.19850" />
     <SUITE FILE_PATH="coverage/BaiDuIndex$get_trend_utils.coverage" NAME="get_trend_utils 覆盖结果" MODIFIED="1742624216226" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/utils" />
     <SUITE FILE_PATH="coverage/BaiDuIndex$__.coverage" NAME="百度指数_趋势研究_搜索指数 覆盖结果" MODIFIED="1742557913612" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/Downloads" />
-    <SUITE FILE_PATH="coverage/BaiDuIndex$main.coverage" NAME="main 覆盖结果" MODIFIED="1742640220985" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/BaiDuIndex$main.coverage" NAME="main 覆盖结果" MODIFIED="1742652276579" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/BaiDuIndex$test_db_connection.coverage" NAME="test_db_connection 覆盖结果" MODIFIED="1740884347316" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/BaiDuIndex$.coverage" NAME="采集百度指数 覆盖结果" MODIFIED="1742631054197" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/teacher_code" />
   </component>

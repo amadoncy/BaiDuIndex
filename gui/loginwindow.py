@@ -20,7 +20,7 @@ from datetime import datetime
 from utils.db_utils import DatabaseConnection
 from config.user_config import UserConfig
 from utils.captcha_utils import CaptchaManager
-from .main_window import WelcomeWindow
+from gui.main_window import WelcomeWindow
 
 
 class WelcomeToast(QWidget):
