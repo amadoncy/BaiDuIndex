@@ -5,7 +5,7 @@ from captcha.image import ImageCaptcha
 from config.redis_config import REDIS_CONFIG, CAPTCHA_CONFIG
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt
-import io
+
 
 class CaptchaManager:
     def __init__(self):

@@ -11,10 +11,11 @@ from utils.get_local_weather_utils import get_weather_info
 import requests
 import json
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta, date
 from utils.get_trend_utils import get_trend_utils, select_area
 from config.city_codes import get_all_regions, get_region_provinces, get_province_cities
 from utils.get_index_cookie_utils import get_index_cookie, get_login_user_info
+from utils.get_huamn_requestion_utils import get_human_request_data
 
 class DataCollectionThread(QThread):
     progress_signal = pyqtSignal(str)
@@ -53,9 +54,22 @@ class DataCollectionThread(QThread):
             elif self.collection_type == "demand":
                 # 需求图谱数据采集
                 self.progress_signal.emit("正在采集需求图谱数据...")
-                # TODO: 实现需求图谱数据采集
-                if self._is_running:
-                    self.finished_signal.emit(True, "需求图谱数据采集完成")
+                try:
+                    # 获取当前日期作为结束日期
+                    end_date = date.today()
+                    # 设置开始日期为7天前
+                    start_date = end_date - timedelta(days=7)
+                    
+                    # 调用需求图谱数据采集函数
+                    success = get_human_request_data(self.keyword, start_date, end_date, self.username)
+                    
+                    if success and self._is_running:
+                        self.progress_signal.emit("需求图谱数据采集完成")
+                        self.finished_signal.emit(True, "需求图谱数据采集完成")
+                    else:
+                        self.finished_signal.emit(False, "需求图谱数据采集失败")
+                except Exception as e:
+                    self.finished_signal.emit(False, f"需求图谱数据采集出错: {str(e)}")
         except Exception as e:
             if self._is_running:
                 self.finished_signal.emit(False, f"错误: {str(e)}")

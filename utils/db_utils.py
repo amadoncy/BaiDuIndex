@@ -3,6 +3,8 @@ import logging
 from config.database import DB_CONFIG
 import json
 from datetime import datetime
+import sqlite3
+import os
 
 # 配置日志
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -276,6 +278,113 @@ class DatabaseConnection:
         except Exception as e:
             logging.error(f"数据库连接测试失败：{str(e)}")
             return False
+
+class DatabaseManager:
+    def __init__(self):
+        # 获取项目根目录
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        # 创建data目录（如果不存在）
+        data_dir = os.path.join(root_dir, 'data')
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+        # 数据库文件路径
+        self.db_path = os.path.join(data_dir, 'baidu_index.db')
+        print(f"数据库路径: {self.db_path}")
+        self.init_database()
+
+    def init_database(self):
+        """初始化数据库，创建必要的表"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # 创建需求图谱数据表
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS human_request_data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                word TEXT NOT NULL,
+                pv INTEGER,
+                ratio INTEGER,
+                sim INTEGER,
+                keyword TEXT NOT NULL,
+                date DATE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
+            
+            conn.commit()
+            print("数据库表创建成功")
+        except Exception as e:
+            print(f"创建数据库表时出错: {str(e)}")
+        finally:
+            conn.close()
+
+    def save_human_request_data(self, data_list, keyword, date):
+        """保存需求图谱数据到数据库"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # 准备插入语句
+            insert_sql = '''
+            INSERT INTO human_request_data (word, pv, ratio, sim, keyword, date)
+            VALUES (?, ?, ?, ?, ?, ?)
+            '''
+            
+            # 批量插入数据
+            for item in data_list:
+                try:
+                    cursor.execute(insert_sql, (
+                        item.get('word', ''),
+                        item.get('pv', 0),
+                        item.get('ratio', 0),
+                        item.get('sim', 0),
+                        keyword,
+                        date
+                    ))
+                except Exception as e:
+                    print(f"插入数据时出错: {str(e)}")
+                    print(f"问题数据: {item}")
+            
+            conn.commit()
+            print(f"成功保存 {len(data_list)} 条数据")
+            return True
+        except Exception as e:
+            print(f"保存数据到数据库时出错: {str(e)}")
+            return False
+        finally:
+            conn.close()
+
+    def get_human_request_data(self, keyword=None, start_date=None, end_date=None):
+        """获取需求图谱数据"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            query = "SELECT * FROM human_request_data WHERE 1=1"
+            params = []
+            
+            if keyword:
+                query += " AND keyword = ?"
+                params.append(keyword)
+            if start_date:
+                query += " AND date >= ?"
+                params.append(start_date)
+            if end_date:
+                query += " AND date <= ?"
+                params.append(end_date)
+                
+            query += " ORDER BY date DESC, id DESC"
+            
+            cursor.execute(query, params)
+            results = cursor.fetchall()
+            print(f"查询到 {len(results)} 条数据")
+            return results
+        except Exception as e:
+            print(f"从数据库获取数据时出错: {str(e)}")
+            return []
+        finally:
+            conn.close()
 
 # 测试代码
 if __name__ == "__main__":
