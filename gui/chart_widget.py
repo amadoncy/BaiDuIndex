@@ -15,7 +15,7 @@ class ChartWidget(QWidget):
         
         # 设置默认大小
         self.setMinimumSize(800, 400)
-        
+
     def update_chart(self, chart):
         """更新图表"""
         try:

@@ -4,23 +4,22 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel,
                              QListWidgetItem, QFrame, QComboBox, QSpinBox,
                              QLineEdit, QProgressBar, QTextEdit, QTabWidget,
                              QTableWidget, QTableWidgetItem, QHeaderView)
-from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSize, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QColor, QPalette, QLinearGradient, QPainter, QIcon
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 import os
 import logging
 import datetime
-from datetime import date
 from utils.get_local_weather_utils import get_weather_info
 import requests
 import json
 from utils.get_trend_utils import get_trend_utils, select_area
 from config.city_codes import get_all_regions, get_region_provinces, get_province_cities
-from utils.get_index_cookie_utils import get_index_cookie, get_login_user_info
-from utils.get_huamn_requestion_utils import get_human_request_data
-from pyecharts.charts import Line, Bar, Pie, Map, Graph, Page
 from pyecharts import options as opts
+from pyecharts.charts import Line, Bar, Pie, Map, Graph, Page
 from utils import db_utils
+from gui.data_display_window import DataDisplayWindow
+from gui.chart_widget import ChartWidget
 
 
 class DataCollectionThread(QThread):
@@ -856,6 +855,12 @@ class WelcomeWindow(QMainWindow):
 
             if success:
                 QMessageBox.information(self, "成功", message)
+                # 获取当前采集的关键词
+                keyword = self.keyword_input.text()
+                # 切换到数据分析页面
+                self.function_list.setCurrentRow(1)  # 切换到数据分析页面
+                # 延迟执行数据分析
+                QTimer.singleShot(500, lambda: self.analyze_data(keyword))
             else:
                 QMessageBox.warning(self, "错误", message)
 
@@ -888,13 +893,7 @@ class WelcomeWindow(QMainWindow):
 
     def create_data_display_page(self):
         """创建数据展示页面"""
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        label = QLabel("数据展示功能开发中...")
-        label.setFont(QFont("Microsoft YaHei", 16))
-        label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(label)
-        return page
+        return DataDisplayWindow()
 
     def create_export_page(self):
         """创建导出数据页面"""
@@ -1119,20 +1118,20 @@ class WelcomeWindow(QMainWindow):
                 QMainWindow {{
                     {theme_style['gradient']}
                 }}
-                
+
                 QLabel {{
                     color: {theme_style['text_color']};
                 }}
-                
+
                 {theme_style['button_style']}
-                
+
                 QListWidget {{
                     background-color: {theme_style['bg_opacity']};
                     border: none;
                     border-radius: 10px;
                     padding: 10px;
                 }}
-                
+
                 QListWidget::item {{
                     color: {theme_style['text_color']};
                     padding: 15px;
@@ -1140,18 +1139,18 @@ class WelcomeWindow(QMainWindow):
                     border-radius: 5px;
                     background-color: {theme_style['bg_opacity']};
                 }}
-                
+
                 {theme_style['list_style']}
-                
+
                 QFrame#left_panel {{
                     background-color: {theme_style['bg_opacity']};
                     border-right: 2px solid {theme_style['border_color']};
                 }}
-                
+
                 QFrame#right_panel {{
                     background-color: {theme_style['bg_opacity']};
                 }}
-                
+
                 QLabel#weather_label {{
                     background: {theme_style['bg_opacity']};
                     border-radius: 10px;
@@ -1159,17 +1158,17 @@ class WelcomeWindow(QMainWindow):
                     font-size: 14px;
                     line-height: 1.5;
                 }}
-                
+
                 QPushButton#logout_btn {{
                     background-color: rgba(244, 67, 54, 0.2);
                     border: 2px solid #f44336;
                     color: {theme_style['text_color']};
                 }}
-                
+
                 QPushButton#logout_btn:hover {{
                     background-color: rgba(244, 67, 54, 0.3);
                 }}
-                
+
                 QComboBox {{
                     background-color: {theme_style['bg_opacity']};
                     border: 2px solid {theme_style['text_color']};
@@ -1178,7 +1177,7 @@ class WelcomeWindow(QMainWindow):
                     padding: 8px;
                     min-width: 150px;
                 }}
-                
+
                 QSpinBox {{
                     background-color: {theme_style['bg_opacity']};
                     border: 2px solid {theme_style['text_color']};
@@ -1361,64 +1360,6 @@ class WelcomeWindow(QMainWindow):
         """)
         layout.addWidget(title_label)
 
-        # 创建关键词输入和查询部分
-        search_layout = QHBoxLayout()
-        keyword_label = QLabel("关键词:")
-        keyword_label.setStyleSheet("color: white;")
-        self.analysis_keyword_input = QLineEdit()
-        self.analysis_keyword_input.setPlaceholderText("请输入要分析的关键词")
-        self.analysis_keyword_input.setStyleSheet("""
-            QLineEdit {
-                padding: 8px;
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 5px;
-                color: white;
-            }
-            QLineEdit:focus {
-                border: 2px solid rgba(255, 255, 255, 0.5);
-            }
-        """)
-
-        # 创建日期选择下拉框
-        date_label = QLabel("日期:")
-        date_label.setStyleSheet("color: white;")
-        self.date_combo = QComboBox()
-        self.date_combo.setStyleSheet("""
-            QComboBox {
-                padding: 8px;
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 5px;
-                color: white;
-                min-width: 150px;
-            }
-        """)
-
-        # 创建查询按钮
-        search_btn = QPushButton("查询")
-        search_btn.setStyleSheet("""
-            QPushButton {
-                padding: 8px 20px;
-                background: rgba(33, 150, 243, 0.8);
-                border: none;
-                border-radius: 5px;
-                color: white;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background: rgba(33, 150, 243, 1);
-            }
-        """)
-        search_btn.clicked.connect(self.analyze_data)
-
-        search_layout.addWidget(keyword_label)
-        search_layout.addWidget(self.analysis_keyword_input)
-        search_layout.addWidget(date_label)
-        search_layout.addWidget(self.date_combo)
-        search_layout.addWidget(search_btn)
-        layout.addLayout(search_layout)
-
         # 创建分析结果展示区域
         self.analysis_tabs = QTabWidget()
         self.analysis_tabs.setStyleSheet("""
@@ -1455,9 +1396,8 @@ class WelcomeWindow(QMainWindow):
         trend_layout.setSpacing(0)
 
         # 创建趋势图表显示区域
-        self.trend_view = QWebEngineView()
-        self.trend_view.setMinimumHeight(800)
-        trend_layout.addWidget(self.trend_view)
+        self.trend_chart = ChartWidget()
+        trend_layout.addWidget(self.trend_chart)
 
         self.analysis_tabs.addTab(self.trend_tab, "趋势分析")
         self.analysis_tabs.addTab(self.portrait_tab, "人群画像分析")
@@ -1484,7 +1424,7 @@ class WelcomeWindow(QMainWindow):
         self.region_tab = QWidget()
         self.interest_tab = QWidget()
 
-        # 为每个标签页创建布局
+        # 为每个标签页创建布局和 WebEngineView
         for tab in [self.age_tab, self.gender_tab, self.interest_tab]:
             tab_layout = QVBoxLayout(tab)
             view = QWebEngineView()
@@ -1515,34 +1455,7 @@ class WelcomeWindow(QMainWindow):
             QTableWidget::item:selected {
                 background-color: rgba(33, 150, 243, 0.3);
             }
-            QScrollBar:vertical {
-                background-color: rgba(255, 255, 255, 0.1);
-                width: 12px;
-            }
-            QScrollBar::handle:vertical {
-                background-color: rgba(255, 255, 255, 0.3);
-                border-radius: 6px;
-            }
-            QScrollBar:horizontal {
-                background-color: rgba(255, 255, 255, 0.1);
-                height: 12px;
-            }
-            QScrollBar::handle:horizontal {
-                background-color: rgba(255, 255, 255, 0.3);
-                border-radius: 6px;
-            }
         """)
-        
-        # 设置表格的拉伸模式
-        self.region_table.horizontalHeader().setStretchLastSection(True)
-        self.region_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.region_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        self.region_table.verticalHeader().setDefaultSectionSize(40)
-        
-        # 设置表格的选择模式
-        self.region_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.region_table.setSelectionMode(QTableWidget.SingleSelection)
-        
         region_layout.addWidget(self.region_table)
 
         portrait_subtabs.addTab(self.age_tab, "年龄分布")
@@ -1598,13 +1511,13 @@ class WelcomeWindow(QMainWindow):
                 border-radius: 6px;
             }
         """)
-        
+
         # 设置表格的拉伸模式
         self.demand_table.horizontalHeader().setStretchLastSection(True)
         self.demand_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.demand_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.demand_table.verticalHeader().setDefaultSectionSize(40)
-        
+
         # 设置表格的选择模式
         self.demand_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.demand_table.setSelectionMode(QTableWidget.SingleSelection)
@@ -1612,74 +1525,60 @@ class WelcomeWindow(QMainWindow):
         # 添加到布局
         layout.addWidget(self.demand_table)
 
-    def analyze_data(self):
+    def analyze_data(self, keyword=None):
         """执行数据分析"""
-        keyword = self.analysis_keyword_input.text()
-        selected_date = self.date_combo.currentText()
-
-        if not keyword:
-            QMessageBox.warning(self, "错误", "请输入关键词")
-            return
-
         try:
             # 连接数据库
             connection = db_utils.get_connection()
             cursor = connection.cursor()
 
-            # 获取可用的日期列表（从crowd_age_data表获取）
+            # 获取最新的日期
             date_query = """
             SELECT DISTINCT date 
             FROM crowd_age_data 
-            WHERE keyword = %s 
-            ORDER BY date DESC
+            ORDER BY date DESC 
+            LIMIT 1
             """
-            cursor.execute(date_query, (keyword,))
-            dates = []
-            for row in cursor.fetchall():
-                if isinstance(row[0], datetime.date):
-                    dates.append(row[0].strftime('%Y-%m-%d'))
-                else:
-                    dates.append(str(row[0]))
+            cursor.execute(date_query)
+            latest_date = cursor.fetchone()
 
-            if not dates:
+            if not latest_date:
                 # 如果crowd_age_data没有数据，尝试从crowd_gender_data获取
                 date_query = """
                 SELECT DISTINCT date 
                 FROM crowd_gender_data 
-                WHERE keyword = %s 
-                ORDER BY date DESC
+                ORDER BY date DESC 
+                LIMIT 1
                 """
-                cursor.execute(date_query, (keyword,))
-                for row in cursor.fetchall():
-                    if isinstance(row[0], datetime.date):
-                        dates.append(row[0].strftime('%Y-%m-%d'))
-                    else:
-                        dates.append(str(row[0]))
+                cursor.execute(date_query)
+                latest_date = cursor.fetchone()
 
-            if not dates:
+            if not latest_date:
                 # 如果还是没有数据，尝试从crowd_interest_data获取
                 date_query = """
                 SELECT DISTINCT date 
                 FROM crowd_interest_data 
-                WHERE keyword = %s 
-                ORDER BY date DESC
+                ORDER BY date DESC 
+                LIMIT 1
                 """
-                cursor.execute(date_query, (keyword,))
-                for row in cursor.fetchall():
-                    if isinstance(row[0], datetime.date):
-                        dates.append(row[0].strftime('%Y-%m-%d'))
-                    else:
-                        dates.append(str(row[0]))
+                cursor.execute(date_query)
+                latest_date = cursor.fetchone()
 
-            if not dates:
+            if not latest_date:
                 QMessageBox.warning(self, "错误", "未找到相关数据")
                 return
 
-            # 更新日期下拉框
-            self.date_combo.clear()
-            self.date_combo.addItems(dates)
-            if selected_date not in dates:
-                selected_date = dates[0]
+            selected_date = latest_date[0]
+            if isinstance(selected_date, datetime.date):
+                selected_date = selected_date.strftime('%Y-%m-%d')
+
+            # 如果没有传入关键词，尝试从采集页面获取
+            if keyword is None:
+                keyword = self.keyword_input.text()
+
+            if not keyword:
+                QMessageBox.warning(self, "错误", "未找到关键词")
+                return
 
             # 分析趋势数据
             self.analyze_trend_data(cursor, keyword, selected_date)
@@ -1715,14 +1614,13 @@ class WelcomeWindow(QMainWindow):
             results = cursor.fetchall()
 
             if not results:
-                self.trend_view.setHtml("<h2 style='color: white; text-align: center;'>暂无数据</h2>")
                 return
 
             # 处理数据 - 采样优化
             total_points = len(results)
             sample_size = min(total_points, 100)  # 最多显示100个数据点
             step = max(1, total_points // sample_size)
-            
+
             dates = []
             values = []
             for i in range(0, total_points, step):
@@ -1741,11 +1639,11 @@ class WelcomeWindow(QMainWindow):
                 renderer="canvas",  # 使用canvas渲染器提高性能
                 animation_opts=opts.AnimationOpts(animation=False)  # 关闭动画提高性能
             ))
-            
+
             # 添加数据
             line.add_xaxis(dates)
             line.add_yaxis(
-                keyword, 
+                keyword,
                 values,
                 is_smooth=False,  # 关闭平滑曲线提高性能
                 symbol="none",  # 不显示数据点提高性能
@@ -1756,7 +1654,7 @@ class WelcomeWindow(QMainWindow):
                     color="#4FC3F7"
                 )
             )
-            
+
             # 优化全局配置
             line.set_global_opts(
                 title_opts=opts.TitleOpts(
@@ -1849,7 +1747,7 @@ class WelcomeWindow(QMainWindow):
                 }
             </style>
             """
-            
+
             # 简化HTML内容
             final_html = f"""
             <!DOCTYPE html>
@@ -1918,13 +1816,13 @@ class WelcomeWindow(QMainWindow):
 
             # 分析地域分布
             print(f"Debug - 查询参数: keyword={keyword}, date={date}, date类型={type(date)}")
-            
+
             # 先检查表中的数据
             check_data_query = "SELECT * FROM crowd_region_data LIMIT 5"
             cursor.execute(check_data_query)
             sample_data = cursor.fetchall()
             print(f"Debug - 表中的示例数据: {sample_data}")
-            
+
             # 检查特定关键词的数据
             check_keyword_query = "SELECT DISTINCT date FROM crowd_region_data WHERE keyword = %s"
             cursor.execute(check_keyword_query, (keyword,))
@@ -1941,7 +1839,7 @@ class WelcomeWindow(QMainWindow):
             cursor.execute(region_query, (keyword,))
             region_results = cursor.fetchall()
             print(f"Debug - 查询结果数量: {len(region_results)}")
-            
+
             # 更新地域分布表格
             if not region_results:
                 print(f"No region distribution data found for keyword {keyword}")
@@ -1981,7 +1879,8 @@ class WelcomeWindow(QMainWindow):
     def update_age_chart(self, results):
         """更新年龄分布图表"""
         if not results:
-            self.age_tab.layout().itemAt(0).widget().setHtml("<p style='color: white; text-align: center;'>没有年龄分布数据</p>")
+            self.age_tab.layout().itemAt(0).widget().setHtml(
+                "<p style='color: white; text-align: center;'>没有年龄分布数据</p>")
             return
 
         # 创建柱状图
@@ -1991,11 +1890,11 @@ class WelcomeWindow(QMainWindow):
             bg_color="#1a237e",
             renderer="canvas"
         ))
-        
+
         ages = []
         rates = []
         tgis = []
-        
+
         for name, rate, tgi in results:
             ages.append(str(name))
             rates.append(float(rate) if rate is not None else 0)
@@ -2047,7 +1946,8 @@ class WelcomeWindow(QMainWindow):
     def update_gender_chart(self, results):
         """更新性别分布图表"""
         if not results:
-            self.gender_tab.layout().itemAt(0).widget().setHtml("<p style='color: white; text-align: center;'>没有性别分布数据</p>")
+            self.gender_tab.layout().itemAt(0).widget().setHtml(
+                "<p style='color: white; text-align: center;'>没有性别分布数据</p>")
             return
 
         # 创建饼图
@@ -2057,7 +1957,7 @@ class WelcomeWindow(QMainWindow):
             bg_color="#1a237e",
             renderer="canvas"
         ))
-        
+
         data_pairs = []
         for name, rate, _ in results:
             if rate is not None:
@@ -2092,7 +1992,8 @@ class WelcomeWindow(QMainWindow):
     def update_interest_chart(self, results):
         """更新兴趣分布图表"""
         if not results:
-            self.interest_tab.layout().itemAt(0).widget().setHtml("<p style='color: white; text-align: center;'>没有兴趣分布数据</p>")
+            self.interest_tab.layout().itemAt(0).widget().setHtml(
+                "<p style='color: white; text-align: center;'>没有兴趣分布数据</p>")
             return
 
         # 按类别分组数据
@@ -2110,12 +2011,12 @@ class WelcomeWindow(QMainWindow):
 
         # 创建页面布局
         page = Page(layout=Page.DraggablePageLayout)
-        
+
         # 为每个类别创建图表
         for category, items in category_data.items():
             # 按value排序
             items.sort(key=lambda x: x['value'], reverse=True)
-            
+
             # 创建柱状图
             bar = Bar(init_opts=opts.InitOpts(
                 width="100%",
@@ -2123,7 +2024,7 @@ class WelcomeWindow(QMainWindow):
                 bg_color="#1a237e",
                 renderer="canvas"
             ))
-            
+
             # 准备数据
             item_names = [item['item'] for item in items]
             values = [item['value'] for item in items]
@@ -2171,7 +2072,7 @@ class WelcomeWindow(QMainWindow):
                     )
                 )
             )
-            
+
             page.add(bar)
 
         # 生成HTML并更新图表
@@ -2378,3 +2279,50 @@ class WelcomeWindow(QMainWindow):
         for i, row in enumerate(data):
             for j, value in enumerate(row):
                 self.demand_list.setItem(i, j, QTableWidgetItem(str(value)))
+
+    def create_trend_chart(self):
+        """创建趋势图表"""
+        chart_widget = QWidget()
+        layout = QVBoxLayout(chart_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        
+        # 创建 WebEngineView
+        self.trend_view = QWebEngineView()
+        self.trend_view.setMinimumHeight(600)
+        layout.addWidget(self.trend_view)
+        
+        return chart_widget
+
+    def update_trend_chart(self, dates, values):
+        """更新趋势图表"""
+        try:
+            fig = self.trend_canvas.figure
+            fig.clear()
+            ax = fig.add_subplot(111)
+            
+            # 绘制趋势线
+            ax.plot(dates, values, color='#2196F3', linewidth=2, marker='o')
+            
+            # 设置标题和标签
+            ax.set_title("百度指数趋势", color='white', pad=20, fontsize=14)
+            ax.set_xlabel("日期", color='white')
+            ax.set_ylabel("指数", color='white')
+            
+            # 设置刻度标签颜色
+            ax.tick_params(colors='white')
+            
+            # 旋转x轴标签
+            plt.setp(ax.get_xticklabels(), rotation=45)
+            
+            # 添加网格
+            ax.grid(True, linestyle='--', alpha=0.3)
+            
+            # 调整布局
+            fig.tight_layout()
+            
+            # 刷新画布
+            self.trend_canvas.draw()
+            
+        except Exception as e:
+            logging.error(f"更新趋势图表失败: {str(e)}")
