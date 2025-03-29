@@ -310,6 +310,14 @@ def save_interest_data_to_db(data_list, keyword, date):
         db = DatabaseConnection()
         cursor = db.connection.cursor()
         
+        # 先删除已存在的相同日期和关键词的数据
+        delete_sql = """
+        DELETE FROM crowd_interest_data 
+        WHERE keyword = %s AND data_date = %s
+        """
+        cursor.execute(delete_sql, (keyword[:100], date.strftime('%Y-%m-%d')))
+        
+        # 创建表（如果不存在）
         create_table_sql = """
         CREATE TABLE IF NOT EXISTS crowd_interest_data (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -326,14 +334,10 @@ def save_interest_data_to_db(data_list, keyword, date):
         """
         cursor.execute(create_table_sql)
         
+        # 插入新数据
         insert_sql = """
         INSERT INTO crowd_interest_data (name, value, tgi, rate, category, keyword, data_date)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-        value = VALUES(value),
-        tgi = VALUES(tgi),
-        rate = VALUES(rate),
-        category = VALUES(category)
         """
         
         values = []
@@ -444,7 +448,11 @@ def get_crowd_portrait_data(keyword, save_dir):
         
         try:
             # 1. 获取区域分布数据
-            region_url = f"https://index.baidu.com/api/SearchApi/region?region=0&word={quote(keyword)}&startDate={current_time.strftime('%Y-%m-%d')}&endDate={current_time.strftime('%Y-%m-%d')}"
+            # 获取最近一周的日期范围
+            end_date = current_time - timedelta(days=1)  # 截止到昨天
+            start_date = end_date - timedelta(days=6)    # 往前推6天，总共7天
+            
+            region_url = f"https://index.baidu.com/api/SearchApi/region?region=0&word={quote(keyword)}&startDate={start_date.strftime('%Y-%m-%d')}&endDate={end_date.strftime('%Y-%m-%d')}"
             print(f"请求区域分布数据: {region_url}")
             region_response = requests.get(region_url, headers=headers)
             region_data = region_response.json()
@@ -456,19 +464,21 @@ def get_crowd_portrait_data(keyword, save_dir):
                         # 处理省份数据
                         if region_info.get('prov_real'):
                             formatted_region_data = []
-                            for prov in region_info['prov_real']:
+                            prov_real = region_info['prov_real']
+                            for code, value in prov_real.items():
+                                province_name = CODE2PROVINCE.get(str(code), '未知')
                                 formatted_region_data.append({
-                                    'province': prov.get('name', '未知'),
-                                    'value': prov.get('value', 0)
+                                    'province': province_name,
+                                    'value': int(value)
                                 })
                             
                             # 保存区域分布数据到数据库
-                            if save_region_data_to_db(formatted_region_data, keyword, current_time):
+                            if save_region_data_to_db(formatted_region_data, keyword, end_date):
                                 print("区域分布数据已保存到数据库")
                             
                             # 保存到Excel
                             df = pd.DataFrame(formatted_region_data)
-                            excel_path = os.path.join(portrait_dir, f"{keyword}_区域分布_{current_time.strftime('%Y%m')}.xlsx")
+                            excel_path = os.path.join(portrait_dir, f"{keyword}_区域分布_{end_date.strftime('%Y%m')}.xlsx")
                             df.to_excel(excel_path, index=False)
                             print(f"区域分布数据已保存到Excel: {excel_path}")
                     else:

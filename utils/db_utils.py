@@ -386,6 +386,62 @@ class DatabaseManager:
         finally:
             conn.close()
 
+def get_connection():
+    """获取数据库连接"""
+    try:
+        connection = pymysql.connect(
+            host=DB_CONFIG['host'],
+            port=DB_CONFIG['port'],
+            user=DB_CONFIG['user'],
+            password=DB_CONFIG['password'],
+            database=DB_CONFIG['db'],
+            charset=DB_CONFIG['charset']
+        )
+        return connection
+    except Exception as e:
+        logging.error(f"数据库连接失败: {str(e)}")
+        raise
+
+def execute_query(query, params=None):
+    """执行查询语句"""
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute(query, params)
+        results = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        return results
+    except Exception as e:
+        logging.error(f"执行查询失败: {str(e)}")
+        raise
+
+def execute_update(query, params=None):
+    """执行更新语句"""
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute(query, params)
+        connection.commit()
+        cursor.close()
+        connection.close()
+    except Exception as e:
+        logging.error(f"执行更新失败: {str(e)}")
+        raise
+
+def execute_many(query, params_list):
+    """执行批量更新语句"""
+    try:
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.executemany(query, params_list)
+        connection.commit()
+        cursor.close()
+        connection.close()
+    except Exception as e:
+        logging.error(f"执行批量更新失败: {str(e)}")
+        raise
+
 # 测试代码
 if __name__ == "__main__":
     try:
