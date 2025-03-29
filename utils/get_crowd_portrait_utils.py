@@ -10,15 +10,89 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pyecharts import options as opts
 from pyecharts.charts import Bar, Line, Tab
 
-# 省份代码映射
+def get_province_codes():
+    """从数据库获取省份代码映射"""
+    db = None
+    cursor = None
+    try:
+        db = DatabaseConnection()
+        cursor = db.connection.cursor()
+        
+        # 先检查表结构
+        cursor.execute("DESCRIBE area_codes")
+        columns = [column[0] for column in cursor.fetchall()]
+        print("area_codes表的列结构:", columns)
+        
+        # 获取所有省份映射数据并打印
+        cursor.execute("SELECT * FROM area_codes WHERE city = 'NULL' OR city IS NULL")
+        results = cursor.fetchall()
+        print("\n当前数据库中的省份映射:")
+        for row in results:
+            print(f"ID: {row[0]}, Region: {row[1]}, Province: {row[2]}, City: {row[3]}, Code: {row[4]}")
+        
+        # 获取省份代码映射
+        query = """
+        SELECT code, province 
+        FROM area_codes 
+        WHERE city = 'NULL' OR city IS NULL
+        """
+        cursor.execute(query)
+        results = cursor.fetchall()
+        
+        # 构建代码到省份名称的映射字典
+        code_map = {str(code): name for code, name in results}
+        print("\n最终生成的省份代码映射字典:")
+        for code, name in code_map.items():
+            print(f"代码 {code} -> 省份 {name}")
+            
+        return code_map
+        
+    except Exception as e:
+        print(f"获取省份代码映射失败: {str(e)}")
+        return {}
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if db:
+            db.close()
+
+# 百度指数省份代码映射
 CODE2PROVINCE = {
-    "901": "山东", "902": "江苏", "903": "安徽", "904": "浙江", "905": "福建",
-    "906": "上海", "907": "广东", "908": "广西", "909": "海南", "910": "湖北",
-    "911": "湖南", "912": "河南", "913": "江西", "914": "北京", "915": "天津",
-    "916": "河北", "917": "山西", "918": "内蒙古", "919": "宁夏", "920": "青海",
-    "921": "陕西", "922": "甘肃", "923": "新疆", "924": "四川", "925": "贵州",
-    "926": "云南", "927": "重庆", "928": "西藏", "929": "台湾", "930": "澳门",
-    "931": "香港", "932": "全国", "933": "其他", "934": "海外"
+    "901": "山东",
+    "902": "安徽",
+    "903": "江西",
+    "904": "重庆",
+    "905": "内蒙古",
+    "906": "海南",
+    "907": "贵州",
+    "908": "宁夏",
+    "909": "福建",
+    "910": "上海",
+    "911": "北京",
+    "912": "广西",
+    "913": "广东",
+    "914": "四川",
+    "915": "山西",
+    "916": "江苏",
+    "917": "浙江",
+    "918": "青海",
+    "919": "黑龙江",
+    "920": "河北",
+    "921": "吉林",
+    "922": "辽宁",
+    "923": "天津",
+    "924": "陕西",
+    "925": "河南",
+    "926": "新疆",
+    "927": "湖南",
+    "928": "湖北",
+    "929": "云南",
+    "930": "西藏",
+    "931": "甘肃",
+    "932": "青海",
+    "933": "宁夏",
+    "934": "西藏"
 }
 
 # 兴趣分类
@@ -454,8 +528,16 @@ def get_crowd_portrait_data(keyword, save_dir):
             
             region_url = f"https://index.baidu.com/api/SearchApi/region?region=0&word={quote(keyword)}&startDate={start_date.strftime('%Y-%m-%d')}&endDate={end_date.strftime('%Y-%m-%d')}"
             print(f"请求区域分布数据: {region_url}")
+
+            for key, value in headers.items():
+                if key.lower() != 'cookie':
+                    print(f"{key}: {value}")
+                else:
+                    print(f"{key}: [已隐藏]")
+
             region_response = requests.get(region_url, headers=headers)
             region_data = region_response.json()
+
             
             if region_data.get('status') == 0 and region_data.get('data'):
                 try:

@@ -1916,18 +1916,62 @@ class WelcomeWindow(QMainWindow):
                 print(f"No interest distribution data found for keyword {keyword} and date {date}")
             self.update_interest_chart(interest_results)
 
-            # 分析地域分布（不需要日期条件）
+            # 分析地域分布
+            print(f"Debug - 查询参数: keyword={keyword}, date={date}, date类型={type(date)}")
+            
+            # 先检查表中的数据
+            check_data_query = "SELECT * FROM crowd_region_data LIMIT 5"
+            cursor.execute(check_data_query)
+            sample_data = cursor.fetchall()
+            print(f"Debug - 表中的示例数据: {sample_data}")
+            
+            # 检查特定关键词的数据
+            check_keyword_query = "SELECT DISTINCT date FROM crowd_region_data WHERE keyword = %s"
+            cursor.execute(check_keyword_query, (keyword,))
+            available_dates = cursor.fetchall()
+            print(f"Debug - 该关键词的可用日期: {available_dates}")
+
+            # 查询地域分布数据
             region_query = """
             SELECT province, value
             FROM crowd_region_data
-            WHERE keyword = %s
+            WHERE keyword = %s AND date = '2025-03-28'
             ORDER BY CAST(value AS DECIMAL) DESC
             """
             cursor.execute(region_query, (keyword,))
             region_results = cursor.fetchall()
+            print(f"Debug - 查询结果数量: {len(region_results)}")
+            
+            # 更新地域分布表格
             if not region_results:
                 print(f"No region distribution data found for keyword {keyword}")
-            self.update_region_chart(region_results)
+                # 清空表格
+                self.region_table.setRowCount(0)
+                self.region_table.setColumnCount(2)
+                self.region_table.setHorizontalHeaderLabels(['省份', '搜索指数'])
+            else:
+                # 设置表格列数和标题
+                self.region_table.setColumnCount(2)
+                self.region_table.setHorizontalHeaderLabels(['省份', '搜索指数'])
+
+                # 设置表格行数
+                self.region_table.setRowCount(len(region_results))
+
+                # 填充数据
+                for row, (province, value) in enumerate(region_results):
+                    # 省份
+                    province_item = QTableWidgetItem(str(province))
+                    province_item.setTextAlignment(Qt.AlignCenter)
+                    self.region_table.setItem(row, 0, province_item)
+
+                    # 搜索指数（四舍五入到整数）
+                    value_item = QTableWidgetItem(str(round(float(value))))
+                    value_item.setTextAlignment(Qt.AlignCenter)
+                    self.region_table.setItem(row, 1, value_item)
+
+                # 调整列宽以适应内容
+                self.region_table.resizeColumnsToContents()
+                self.region_table.resizeRowsToContents()
 
         except Exception as e:
             logging.error(f"人群画像分析失败: {str(e)}")
@@ -2136,34 +2180,40 @@ class WelcomeWindow(QMainWindow):
 
     def update_region_chart(self, results):
         """更新地域分布表格"""
-        if not results:
-            self.region_table.setRowCount(0)
+        try:
+            if not results:
+                self.region_table.setRowCount(0)
+                self.region_table.setColumnCount(2)
+                self.region_table.setHorizontalHeaderLabels(['省份', '搜索指数'])
+                return
+
+            # 设置表格列数和标题
             self.region_table.setColumnCount(2)
             self.region_table.setHorizontalHeaderLabels(['省份', '搜索指数'])
-            return
 
-        # 设置表格列数和标题
-        self.region_table.setColumnCount(2)
-        self.region_table.setHorizontalHeaderLabels(['省份', '搜索指数'])
+            # 设置表格行数
+            self.region_table.setRowCount(len(results))
 
-        # 设置表格行数
-        self.region_table.setRowCount(len(results))
+            # 填充数据
+            for row, (province, value) in enumerate(results):
+                # 省份
+                province_item = QTableWidgetItem(str(province))
+                province_item.setTextAlignment(Qt.AlignCenter)
+                self.region_table.setItem(row, 0, province_item)
 
-        # 填充数据
-        for row, (province, value) in enumerate(results):
-            # 省份
-            province_item = QTableWidgetItem(str(province))
-            province_item.setTextAlignment(Qt.AlignCenter)
-            self.region_table.setItem(row, 0, province_item)
+                # 搜索指数
+                value_item = QTableWidgetItem(str(value))
+                value_item.setTextAlignment(Qt.AlignCenter)
+                self.region_table.setItem(row, 1, value_item)
 
-            # 搜索指数
-            value_item = QTableWidgetItem(str(value))
-            value_item.setTextAlignment(Qt.AlignCenter)
-            self.region_table.setItem(row, 1, value_item)
+            # 调整列宽以适应内容
+            self.region_table.resizeColumnsToContents()
+            self.region_table.resizeRowsToContents()
 
-        # 调整列宽以适应内容
-        self.region_table.resizeColumnsToContents()
-        self.region_table.resizeRowsToContents()
+        except Exception as e:
+            logging.error(f"更新地域分布表格时出错: {str(e)}")
+            import traceback
+            logging.error(f"错误详情: {traceback.format_exc()}")
 
     def analyze_demand_data(self, cursor, keyword, date):
         """分析需求图谱数据"""
