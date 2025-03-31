@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel,
                              QListWidgetItem, QFrame, QComboBox, QSpinBox,
                              QLineEdit, QProgressBar, QTextEdit, QTabWidget,
                              QTableWidget, QTableWidgetItem, QHeaderView)
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSize, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSize, QThread, pyqtSignal, QUrl
 from PyQt5.QtGui import QFont, QColor, QPalette, QLinearGradient, QPainter, QIcon
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 import os
@@ -17,9 +17,11 @@ from utils.get_trend_utils import get_trend_utils, select_area
 from config.city_codes import get_all_regions, get_region_provinces, get_province_cities
 from pyecharts import options as opts
 from pyecharts.charts import Line, Bar, Pie, Map, Graph, Page
+from pyecharts.commons.utils import JsCode
 from utils import db_utils
 from gui.data_display_window import DataDisplayWindow
 from gui.chart_widget import ChartWidget
+import traceback
 
 
 class DataCollectionThread(QThread):
@@ -857,10 +859,11 @@ class WelcomeWindow(QMainWindow):
                 QMessageBox.information(self, "成功", message)
                 # 获取当前采集的关键词
                 keyword = self.keyword_input.text()
-                # 切换到数据分析页面
-                self.function_list.setCurrentRow(1)  # 切换到数据分析页面
-                # 延迟执行数据分析
-                QTimer.singleShot(500, lambda: self.analyze_data(keyword))
+                print(f"数据采集完成，准备分析关键词: {keyword}")
+                # 使用QTimer延迟执行数据分析，避免界面卡顿
+                QTimer.singleShot(1000, lambda: self.analyze_data(keyword))
+                # 延迟切换到数据分析页面
+                QTimer.singleShot(1500, lambda: self.function_list.setCurrentRow(1))
             else:
                 QMessageBox.warning(self, "错误", message)
 
@@ -872,6 +875,7 @@ class WelcomeWindow(QMainWindow):
 
         except Exception as e:
             logging.error(f"处理采集完成事件时发生错误: {str(e)}")
+            print(f"处理采集完成事件时发生错误: {str(e)}")
             self.enable_all_buttons()
 
     def enable_all_buttons(self):
@@ -1385,21 +1389,23 @@ class WelcomeWindow(QMainWindow):
             }
         """)
 
-        # 创建各个分析标签页
-        self.trend_tab = QWidget()
-        self.portrait_tab = QWidget()
-        self.demand_tab = QWidget()
-
-        # 设置标签页的布局
-        trend_layout = QVBoxLayout(self.trend_tab)
+        # 创建趋势分析标签页
+        trend_tab = QWidget()
+        trend_layout = QVBoxLayout(trend_tab)
         trend_layout.setContentsMargins(0, 0, 0, 0)
         trend_layout.setSpacing(0)
 
         # 创建趋势图表显示区域
-        self.trend_chart = ChartWidget()
-        trend_layout.addWidget(self.trend_chart)
+        self.trend_view = QWebEngineView()
+        self.trend_view.setMinimumHeight(600)
+        trend_layout.addWidget(self.trend_view)
 
-        self.analysis_tabs.addTab(self.trend_tab, "趋势分析")
+        # 创建其他标签页
+        self.portrait_tab = QWidget()
+        self.demand_tab = QWidget()
+
+        # 添加标签页
+        self.analysis_tabs.addTab(trend_tab, "趋势分析")
         self.analysis_tabs.addTab(self.portrait_tab, "人群画像分析")
         self.analysis_tabs.addTab(self.demand_tab, "需求图谱分析")
 
@@ -1431,32 +1437,21 @@ class WelcomeWindow(QMainWindow):
             view.setMinimumHeight(600)
             tab_layout.addWidget(view)
 
-        # 为地域分布标签页创建表格布局
+        # 为地域分布标签页创建垂直布局
         region_layout = QVBoxLayout(self.region_tab)
-        self.region_table = QTableWidget()
-        self.region_table.setStyleSheet("""
-            QTableWidget {
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-                border: none;
-                gridline-color: rgba(255, 255, 255, 0.1);
-            }
-            QTableWidget::item {
-                padding: 8px;
-                border: none;
-            }
-            QHeaderView::section {
-                background-color: #1565C0;
-                color: white;
-                padding: 8px;
-                border: none;
-                font-weight: bold;
-            }
-            QTableWidget::item:selected {
-                background-color: rgba(33, 150, 243, 0.3);
+        region_layout.setContentsMargins(10, 10, 10, 10)
+        region_layout.setSpacing(10)
+        
+        # 创建地图视图
+        self.region_map_view = QWebEngineView()
+        self.region_map_view.setMinimumHeight(800)  # 增加地图高度
+        self.region_map_view.setStyleSheet("""
+            QWebEngineView {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
             }
         """)
-        region_layout.addWidget(self.region_table)
+        region_layout.addWidget(self.region_map_view)
 
         portrait_subtabs.addTab(self.age_tab, "年龄分布")
         portrait_subtabs.addTab(self.gender_tab, "性别分布")
@@ -1466,138 +1461,190 @@ class WelcomeWindow(QMainWindow):
         layout.addWidget(portrait_subtabs)
 
     def init_demand_tab(self):
-        """初始化需求图谱分析标签页"""
+        """初始化需求图谱标签页"""
         layout = QVBoxLayout(self.demand_tab)
         layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+        layout.setSpacing(15)
 
-        # 创建表格视图
+        # 标题
+        title_label = QLabel("需求图谱分析")
+        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        layout.addWidget(title_label)
+
+        # 创建表格
         self.demand_table = QTableWidget()
         self.demand_table.setStyleSheet("""
             QTableWidget {
                 background-color: rgba(255, 255, 255, 0.1);
                 color: white;
-                border: none;
-                gridline-color: rgba(255, 255, 255, 0.1);
-            }
-            QTableWidget::item {
-                padding: 8px;
-                border: none;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 5px;
             }
             QHeaderView::section {
-                background-color: #1565C0;
+                background-color: rgba(255, 255, 255, 0.2);
                 color: white;
-                padding: 8px;
-                border: none;
-                font-weight: bold;
+                padding: 5px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            QTableWidget::item {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 5px;
             }
             QTableWidget::item:selected {
-                background-color: rgba(33, 150, 243, 0.3);
-            }
-            QScrollBar:vertical {
-                background-color: rgba(255, 255, 255, 0.1);
-                width: 12px;
-            }
-            QScrollBar::handle:vertical {
                 background-color: rgba(255, 255, 255, 0.3);
-                border-radius: 6px;
-            }
-            QScrollBar:horizontal {
-                background-color: rgba(255, 255, 255, 0.1);
-                height: 12px;
-            }
-            QScrollBar::handle:horizontal {
-                background-color: rgba(255, 255, 255, 0.3);
-                border-radius: 6px;
             }
         """)
 
-        # 设置表格的拉伸模式
+        # 设置表格属性
+        self.demand_table.setAlternatingRowColors(True)
         self.demand_table.horizontalHeader().setStretchLastSection(True)
         self.demand_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.demand_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.demand_table.verticalHeader().setDefaultSectionSize(40)
-
-        # 设置表格的选择模式
+        
+        # 设置选择行为
         self.demand_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.demand_table.setSelectionMode(QTableWidget.SingleSelection)
-
-        # 添加到布局
+        
         layout.addWidget(self.demand_table)
+        
+        # 添加Web视图用于显示图表
+        self.demand_view = QWebEngineView()
+        self.demand_view.setMinimumHeight(400)
+        layout.addWidget(self.demand_view)
+
+        # 默认显示无数据提示
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {
+                    background-color: #1a237e;
+                    color: white;
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                }
+                .message {
+                    text-align: center;
+                    padding: 20px;
+                }
+                h2 {
+                    margin-bottom: 10px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="message">
+                <h2>暂无需求图谱数据</h2>
+                <p>请先进行数据采集</p>
+            </div>
+        </body>
+        </html>
+        """
+        self.demand_view.setHtml(html)
 
     def analyze_data(self, keyword=None):
         """执行数据分析"""
         try:
+            print("开始数据分析...")
+            
             # 连接数据库
+            print("正在连接数据库...")
             connection = db_utils.get_connection()
             cursor = connection.cursor()
+            print("数据库连接成功")
+
+            # 如果没有传入关键词，尝试从采集页面获取
+            if keyword is None:
+                keyword = self.keyword_input.text()
+                print(f"使用输入框关键词: {keyword}")
+
+            if not keyword:
+                print("未找到关键词")
+                QMessageBox.warning(self, "错误", "未找到关键词")
+                return
+
+            print(f"开始分析关键词: {keyword}")
 
             # 获取最新的日期
+            print("正在查询最新日期...")
             date_query = """
             SELECT DISTINCT date 
-            FROM crowd_age_data 
+            FROM crowd_region_data 
+            WHERE keyword = %s
             ORDER BY date DESC 
             LIMIT 1
             """
-            cursor.execute(date_query)
+            cursor.execute(date_query, (keyword,))
             latest_date = cursor.fetchone()
+            print(f"查询到的最新日期: {latest_date}")
 
             if not latest_date:
-                # 如果crowd_age_data没有数据，尝试从crowd_gender_data获取
+                print("未找到相关数据，尝试其他表...")
+                # 尝试从其他表获取日期
                 date_query = """
-                SELECT DISTINCT date 
-                FROM crowd_gender_data 
-                ORDER BY date DESC 
-                LIMIT 1
-                """
-                cursor.execute(date_query)
-                latest_date = cursor.fetchone()
-
-            if not latest_date:
-                # 如果还是没有数据，尝试从crowd_interest_data获取
-                date_query = """
-                SELECT DISTINCT date 
+                SELECT DISTINCT data_date 
                 FROM crowd_interest_data 
-                ORDER BY date DESC 
+                WHERE keyword = %s
+                ORDER BY data_date DESC 
                 LIMIT 1
                 """
-                cursor.execute(date_query)
+                cursor.execute(date_query, (keyword,))
                 latest_date = cursor.fetchone()
+                print(f"从crowd_interest_data查询到的日期: {latest_date}")
 
             if not latest_date:
+                print("所有表中都未找到数据")
                 QMessageBox.warning(self, "错误", "未找到相关数据")
+                cursor.close()
+                connection.close()
                 return
 
             selected_date = latest_date[0]
             if isinstance(selected_date, datetime.date):
                 selected_date = selected_date.strftime('%Y-%m-%d')
+            print(f"使用日期: {selected_date}")
 
-            # 如果没有传入关键词，尝试从采集页面获取
-            if keyword is None:
-                keyword = self.keyword_input.text()
+            try:
+                print("开始分析趋势数据...")
+                self.analyze_trend_data(cursor, keyword, selected_date)
+                print("趋势数据分析完成")
+            except Exception as e:
+                print(f"趋势数据分析失败: {str(e)}")
+                logging.error(f"趋势数据分析失败: {str(e)}")
 
-            if not keyword:
-                QMessageBox.warning(self, "错误", "未找到关键词")
-                return
+            try:
+                print("开始分析人群画像数据...")
+                self.analyze_portrait_data(cursor, keyword, selected_date)
+                print("人群画像数据分析完成")
+            except Exception as e:
+                print(f"人群画像数据分析失败: {str(e)}")
+                logging.error(f"人群画像数据分析失败: {str(e)}")
 
-            # 分析趋势数据
-            self.analyze_trend_data(cursor, keyword, selected_date)
+            try:
+                print("开始分析需求图谱数据...")
+                self.analyze_demand_data(cursor, keyword, selected_date)
+                print("需求图谱数据分析完成")
+            except Exception as e:
+                print(f"需求图谱数据分析失败: {str(e)}")
+                logging.error(f"需求图谱数据分析失败: {str(e)}")
 
-            # 分析人群画像数据
-            self.analyze_portrait_data(cursor, keyword, selected_date)
-
-            # 分析需求图谱数据
-            self.analyze_demand_data(cursor, keyword, selected_date)
-
+            print("所有数据分析完成")
             cursor.close()
             connection.close()
 
         except Exception as e:
+            print(f"数据分析过程中发生错误: {str(e)}")
             logging.error(f"数据分析失败: {str(e)}")
             QMessageBox.warning(self, "错误", f"数据分析失败: {str(e)}")
-            if cursor:
+            if 'cursor' in locals():
                 cursor.close()
-            if connection:
+            if 'connection' in locals():
                 connection.close()
 
     def analyze_trend_data(self, cursor, keyword, date):
@@ -1775,105 +1822,127 @@ class WelcomeWindow(QMainWindow):
     def analyze_portrait_data(self, cursor, keyword, date):
         """分析人群画像数据"""
         try:
-            # 分析年龄分布
-            age_query = """
-            SELECT name, rate, tgi
-            FROM crowd_age_data
-            WHERE keyword = %s AND date = %s
-            ORDER BY CAST(rate AS DECIMAL) DESC
-            """
-            cursor.execute(age_query, (keyword, date))
-            age_results = cursor.fetchall()
-            if not age_results:
-                print(f"No age distribution data found for keyword {keyword} and date {date}")
-            self.update_age_chart(age_results)
+            # 将字符串日期转换为datetime.date对象
+            if isinstance(date, str):
+                date = datetime.datetime.strptime(date, '%Y-%m-%d').date()
 
-            # 分析性别分布
-            gender_query = """
-            SELECT name, rate, tgi
-            FROM crowd_gender_data
-            WHERE keyword = %s AND date = %s
-            ORDER BY CAST(rate AS DECIMAL) DESC
-            """
-            cursor.execute(gender_query, (keyword, date))
-            gender_results = cursor.fetchall()
-            if not gender_results:
-                print(f"No gender distribution data found for keyword {keyword} and date {date}")
-            self.update_gender_chart(gender_results)
-
-            # 分析兴趣分布
-            interest_query = """
-            SELECT category, name, value, tgi, rate
-            FROM crowd_interest_data
-            WHERE keyword = %s AND data_date = %s
-            ORDER BY CAST(value AS DECIMAL) DESC
-            """
-            cursor.execute(interest_query, (keyword, date))
-            interest_results = cursor.fetchall()
-            if not interest_results:
-                print(f"No interest distribution data found for keyword {keyword} and date {date}")
-            self.update_interest_chart(interest_results)
-
-            # 分析地域分布
             print(f"Debug - 查询参数: keyword={keyword}, date={date}, date类型={type(date)}")
 
-            # 先检查表中的数据
-            check_data_query = "SELECT * FROM crowd_region_data LIMIT 5"
-            cursor.execute(check_data_query)
-            sample_data = cursor.fetchall()
-            print(f"Debug - 表中的示例数据: {sample_data}")
+            # 先检查地域数据表中的可用日期
+            check_region_query = "SELECT DISTINCT date FROM crowd_region_data WHERE keyword = %s ORDER BY date DESC"
+            cursor.execute(check_region_query, (keyword,))
+            region_dates = cursor.fetchall()
+            print(f"Debug - 地域数据可用日期: {region_dates}")
 
-            # 检查特定关键词的数据
-            check_keyword_query = "SELECT DISTINCT date FROM crowd_region_data WHERE keyword = %s"
-            cursor.execute(check_keyword_query, (keyword,))
-            available_dates = cursor.fetchall()
-            print(f"Debug - 该关键词的可用日期: {available_dates}")
+            # 检查年龄数据表中的可用日期
+            check_age_query = "SELECT DISTINCT date FROM crowd_age_data WHERE keyword = %s ORDER BY date DESC"
+            cursor.execute(check_age_query, (keyword,))
+            age_dates = cursor.fetchall()
+            print(f"Debug - 年龄数据可用日期: {age_dates}")
 
-            # 查询地域分布数据
-            region_query = """
-            SELECT province, value
-            FROM crowd_region_data
-            WHERE keyword = %s AND date = '2025-03-28'
-            ORDER BY CAST(value AS DECIMAL) DESC
-            """
-            cursor.execute(region_query, (keyword,))
-            region_results = cursor.fetchall()
-            print(f"Debug - 查询结果数量: {len(region_results)}")
+            # 检查性别数据表中的可用日期 
+            check_gender_query = "SELECT DISTINCT date FROM crowd_gender_data WHERE keyword = %s ORDER BY date DESC"
+            cursor.execute(check_gender_query, (keyword,))
+            gender_dates = cursor.fetchall()
+            print(f"Debug - 性别数据可用日期: {gender_dates}")
 
-            # 更新地域分布表格
-            if not region_results:
-                print(f"No region distribution data found for keyword {keyword}")
-                # 清空表格
-                self.region_table.setRowCount(0)
-                self.region_table.setColumnCount(2)
-                self.region_table.setHorizontalHeaderLabels(['省份', '搜索指数'])
+            # 检查兴趣数据表中的可用日期
+            check_interest_query = "SELECT DISTINCT data_date FROM crowd_interest_data WHERE keyword = %s ORDER BY data_date DESC"
+            cursor.execute(check_interest_query, (keyword,))
+            interest_dates = cursor.fetchall()
+            print(f"Debug - 兴趣数据可用日期: {interest_dates}")
+
+            # 处理地域分布数据
+            if region_dates:
+                # 使用最新的可用日期
+                region_latest_date = region_dates[0][0]
+                print(f"Debug - 使用地域数据最新可用日期: {region_latest_date}")
+
+                # 查询地域分布数据
+                region_query = """
+                SELECT province, value
+                FROM crowd_region_data
+                WHERE keyword = %s AND date = %s
+                ORDER BY CAST(value AS DECIMAL) DESC
+                """
+                cursor.execute(region_query, (keyword, region_latest_date))
+                region_results = cursor.fetchall()
+                print(f"Debug - 地域分布查询结果: {region_results}")
+
+                if region_results:
+                    # 直接更新地域分布图表
+                    self.update_region_chart(region_results)
+                else:
+                    print(f"No region distribution data found for keyword {keyword}")
             else:
-                # 设置表格列数和标题
-                self.region_table.setColumnCount(2)
-                self.region_table.setHorizontalHeaderLabels(['省份', '搜索指数'])
+                print(f"No available dates found for keyword {keyword} in region data")
 
-                # 设置表格行数
-                self.region_table.setRowCount(len(region_results))
+            # 处理年龄分布数据
+            if age_dates:
+                age_latest_date = age_dates[0][0]
+                print(f"Debug - 使用年龄数据最新可用日期: {age_latest_date}")
+                
+                age_query = """
+                SELECT name, rate, tgi
+                FROM crowd_age_data
+                WHERE keyword = %s AND date = %s
+                ORDER BY CAST(rate AS DECIMAL) DESC
+                """
+                cursor.execute(age_query, (keyword, age_latest_date))
+                age_results = cursor.fetchall()
+                if age_results:
+                    print(f"获取到年龄分布数据: {len(age_results)}条")
+                    self.update_age_chart(age_results)
+                else:
+                    print(f"No age distribution data found for keyword {keyword} and date {age_latest_date}")
+            else:
+                print(f"No age distribution data found for keyword {keyword}")
 
-                # 填充数据
-                for row, (province, value) in enumerate(region_results):
-                    # 省份
-                    province_item = QTableWidgetItem(str(province))
-                    province_item.setTextAlignment(Qt.AlignCenter)
-                    self.region_table.setItem(row, 0, province_item)
+            # 处理性别分布数据
+            if gender_dates:
+                gender_latest_date = gender_dates[0][0]
+                print(f"Debug - 使用性别数据最新可用日期: {gender_latest_date}")
+                
+                gender_query = """
+                SELECT name, rate, tgi
+                FROM crowd_gender_data
+                WHERE keyword = %s AND date = %s
+                ORDER BY CAST(rate AS DECIMAL) DESC
+                """
+                cursor.execute(gender_query, (keyword, gender_latest_date))
+                gender_results = cursor.fetchall()
+                if gender_results:
+                    print(f"获取到性别分布数据: {len(gender_results)}条")
+                    self.update_gender_chart(gender_results)
+                else:
+                    print(f"No gender distribution data found for keyword {keyword} and date {gender_latest_date}")
+            else:
+                print(f"No gender distribution data found for keyword {keyword}")
 
-                    # 搜索指数（四舍五入到整数）
-                    value_item = QTableWidgetItem(str(round(float(value))))
-                    value_item.setTextAlignment(Qt.AlignCenter)
-                    self.region_table.setItem(row, 1, value_item)
-
-                # 调整列宽以适应内容
-                self.region_table.resizeColumnsToContents()
-                self.region_table.resizeRowsToContents()
+            # 处理兴趣分布数据
+            if interest_dates:
+                interest_latest_date = interest_dates[0][0]
+                print(f"Debug - 使用兴趣数据最新可用日期: {interest_latest_date}")
+                
+                interest_query = """
+                SELECT category, name, value, tgi, rate
+                FROM crowd_interest_data
+                WHERE keyword = %s AND data_date = %s
+                ORDER BY CAST(value AS DECIMAL) DESC
+                """
+                cursor.execute(interest_query, (keyword, interest_latest_date))
+                interest_results = cursor.fetchall()
+                if interest_results:
+                    print(f"获取到兴趣分布数据: {len(interest_results)}条")
+                    self.update_interest_chart(interest_results)
+                else:
+                    print(f"No interest distribution data found for keyword {keyword} and date {interest_latest_date}")
+            else:
+                print(f"No interest distribution data found for keyword {keyword}")
 
         except Exception as e:
             logging.error(f"人群画像分析失败: {str(e)}")
-            QMessageBox.warning(self, "错误", f"人群画像分析失败: {str(e)}")
+            print(f"人群画像分析错误: {str(e)}")
             raise
 
     def update_age_chart(self, results):
@@ -2080,97 +2149,261 @@ class WelcomeWindow(QMainWindow):
         self.interest_tab.layout().itemAt(0).widget().setHtml(html_content)
 
     def update_region_chart(self, results):
-        """更新地域分布表格"""
+        """更新地域分布地图"""
         try:
             if not results:
-                self.region_table.setRowCount(0)
-                self.region_table.setColumnCount(2)
-                self.region_table.setHorizontalHeaderLabels(['省份', '搜索指数'])
                 return
 
-            # 设置表格列数和标题
-            self.region_table.setColumnCount(2)
-            self.region_table.setHorizontalHeaderLabels(['省份', '搜索指数'])
+            # 准备地图数据
+            map_data = []
+            for province, value in results:
+                try:
+                    float_value = float(value) if value is not None else 0
+                    map_data.append({"name": province, "value": float_value})
+                    print(f"处理数据 - 省份: {province}, 值: {float_value}")
+                except (ValueError, TypeError) as e:
+                    print(f"数据转换错误 - 省份: {province}, 值: {value}, 错误: {str(e)}")
 
-            # 设置表格行数
-            self.region_table.setRowCount(len(results))
+            if not map_data:
+                print("没有有效的数据")
+                return
 
-            # 填充数据
-            for row, (province, value) in enumerate(results):
-                # 省份
-                province_item = QTableWidgetItem(str(province))
-                province_item.setTextAlignment(Qt.AlignCenter)
-                self.region_table.setItem(row, 0, province_item)
+            # 计算最大值
+            max_value = max(item["value"] for item in map_data)
+            print(f"最大值: {max_value}")
 
-                # 搜索指数
-                value_item = QTableWidgetItem(str(value))
-                value_item.setTextAlignment(Qt.AlignCenter)
-                self.region_table.setItem(row, 1, value_item)
-
-            # 调整列宽以适应内容
-            self.region_table.resizeColumnsToContents()
-            self.region_table.resizeRowsToContents()
+            # 使用更简单的方法 - 直接使用pyecharts生成图表
+            from pyecharts.charts import Map
+            from pyecharts import options as opts
+            
+            # 分离省份和值数组
+            provinces = [item["name"] for item in map_data]
+            values = [item["value"] for item in map_data]
+            
+            # 创建地图实例
+            map_chart = Map(init_opts=opts.InitOpts(
+                width="100%",
+                height="600px",
+                bg_color="#1a237e",
+                renderer="canvas",  # 使用Canvas而不是SVG
+                is_horizontal_center=True
+            ))
+            
+            # 添加数据
+            map_chart.add(
+                series_name="搜索指数",
+                data_pair=list(zip(provinces, values)),
+                maptype="china",
+                is_roam=True,
+                is_map_symbol_show=False,
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=opts.ItemStyleOpts(
+                    color='#323c48',
+                    border_color='#111'
+                ),
+                emphasis_label_opts=opts.LabelOpts(is_show=True, color="#fff"),
+                emphasis_itemstyle_opts=opts.ItemStyleOpts(color="#ff5722")
+            )
+            
+            # 添加视觉映射组件
+            map_chart.set_global_opts(
+                title_opts=opts.TitleOpts(
+                    title="地域分布热力图",
+                    pos_left="center",
+                    pos_top="20px",
+                    title_textstyle_opts=opts.TextStyleOpts(
+                        color="#fff",
+                        font_size=20
+                    )
+                ),
+                tooltip_opts=opts.TooltipOpts(
+                    trigger="item", 
+                    formatter="{b}<br/>搜索指数: {c}"
+                ),
+                visualmap_opts=opts.VisualMapOpts(
+                    min_=0,
+                    max_=max_value,
+                    range_text=["高", "低"],
+                    is_calculable=True,
+                    dimension=0,
+                    pos_left="10%",
+                    pos_top="middle",
+                    range_color=["#C6E2FF", "#1E90FF", "#002366"],
+                    textstyle_opts=opts.TextStyleOpts(color="#fff")
+                )
+            )
+            
+            # 直接使用render_embed方法获取HTML
+            html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>地域分布热力图</title>
+                <style>
+                    body, html {{
+                        margin: 0;
+                        padding: 0;
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                        background-color: #1a237e;
+                    }}
+                    .container {{
+                        width: 100%;
+                        height: 600px;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    {map_chart.render_embed()}
+                </div>
+                <script>
+                    setTimeout(function() {{
+                        console.log("地图数据已加载");
+                    }}, 1000);
+                </script>
+            </body>
+            </html>
+            """
+            
+            # 更新地图显示
+            self.region_map_view.setHtml(html)
+            print("地图HTML已更新")
+            
+            # 添加JavaScript控制台输出到Python
+            self.region_map_view.page().runJavaScript(
+                "console.log('Map rendered with PyEcharts'); document.title;",
+                lambda x: print(f"JavaScript log: {x}")
+            )
 
         except Exception as e:
-            logging.error(f"更新地域分布表格时出错: {str(e)}")
+            logging.error(f"更新地域分布图表时出错: {str(e)}")
+            print(f"错误: {str(e)}")
             import traceback
-            logging.error(f"错误详情: {traceback.format_exc()}")
+            traceback.print_exc()
 
     def analyze_demand_data(self, cursor, keyword, date):
         """分析需求图谱数据"""
         try:
-            # 查询需求图谱数据，只取前10条
-            query = """
-            SELECT DISTINCT word, pv, ratio, sim 
-            FROM human_request_data 
-            WHERE keyword = %s AND date = %s
-            ORDER BY pv DESC
-            LIMIT 10
+            print(f"开始分析需求图谱数据: keyword={keyword}, date={date}")
+            
+            # 首先检查表中是否有这个关键词的数据，并获取最新日期
+            check_dates_query = """
+            SELECT DISTINCT date FROM human_request_data 
+            WHERE keyword = %s
+            ORDER BY date DESC
+            LIMIT 1
             """
-            cursor.execute(query, (keyword, date))
-            results = cursor.fetchall()
+            cursor.execute(check_dates_query, (keyword,))
+            date_result = cursor.fetchone()
+            
+            if date_result:
+                latest_date = date_result[0]
+                print(f"找到需求图谱数据的最新日期: {latest_date}")
+                
+                # 查询需求图谱数据，使用最新日期和关键词
+                query = """
+                SELECT DISTINCT word, pv, ratio, sim 
+                FROM human_request_data 
+                WHERE keyword = %s AND date = %s
+                ORDER BY pv DESC
+                LIMIT 15
+                """
+                cursor.execute(query, (keyword, latest_date))
+                results = cursor.fetchall()
+                
+                if results:
+                    print(f"获取到 {len(results)} 条需求图谱数据")
+                    
+                    # 更新表格数据
+                    self.demand_table.clear()
+                    self.demand_table.setColumnCount(4)
+                    self.demand_table.setHorizontalHeaderLabels([
+                        "关联词",
+                        "搜索量(PV)",
+                        "相关度(%)",
+                        "语义相似度"
+                    ])
+                    self.demand_table.setRowCount(len(results))
 
-            if not results:
-                self.demand_table.clear()
-                self.demand_table.setRowCount(0)
-                return
+                    # 填充表格数据
+                    for i, row in enumerate(results):
+                        word, pv, ratio, sim = row
+                        self.demand_table.setItem(i, 0, QTableWidgetItem(str(word)))
+                        self.demand_table.setItem(i, 1, QTableWidgetItem(f"{pv:,}"))  # 添加千位分隔符
+                        self.demand_table.setItem(i, 2, QTableWidgetItem(f"{float(ratio):.2f}%" if ratio else "0%"))
+                        self.demand_table.setItem(i, 3, QTableWidgetItem(f"{float(sim):.2f}" if sim else "0"))
 
-            # 更新表格数据
-            self.demand_table.setColumnCount(4)
-            self.demand_table.setHorizontalHeaderLabels([
-                "关联词",
-                "搜索量(PV)",
-                "相关度(%)",
-                "语义相似度"
-            ])
-            self.demand_table.setRowCount(len(results))
+                    # 调整表格列宽
+                    self.demand_table.resizeColumnsToContents()
+                    self.demand_table.resizeRowsToContents()
 
-            # 填充表格数据
-            for i, row in enumerate(results):
-                word, pv, ratio, sim = row
-                self.demand_table.setItem(i, 0, QTableWidgetItem(str(word)))
-                self.demand_table.setItem(i, 1, QTableWidgetItem(f"{pv:,}"))  # 添加千位分隔符
-                self.demand_table.setItem(i, 2, QTableWidgetItem(f"{float(ratio):.2f}%" if ratio else "0%"))
-                self.demand_table.setItem(i, 3, QTableWidgetItem(f"{float(sim):.2f}" if sim else "0"))
-
-            # 调整表格列宽
-            self.demand_table.resizeColumnsToContents()
-            self.demand_table.resizeRowsToContents()
-
-            # 设置表头提示信息
-            for col, tooltip in enumerate([
-                "与主关键词相关的搜索词",
-                "该关联词的搜索次数",
-                "与主关键词的相关程度",
-                "与主关键词的语义相似程度，数值越大表示含义越接近"
-            ]):
-                header_item = self.demand_table.horizontalHeaderItem(col)
-                if header_item:
-                    header_item.setToolTip(tooltip)
+                    # 设置表头提示信息
+                    for col, tooltip in enumerate([
+                        "与主关键词相关的搜索词",
+                        "该关联词的搜索次数",
+                        "与主关键词的相关程度",
+                        "与主关键词的语义相似程度，数值越大表示含义越接近"
+                    ]):
+                        header_item = self.demand_table.horizontalHeaderItem(col)
+                        if header_item:
+                            header_item.setToolTip(tooltip)
+                            
+                    # 创建图表可视化
+                    self.create_demand_graph(keyword, results)
+                    
+                    return
+                else:
+                    print(f"没有找到需求图谱数据: keyword={keyword}, date={latest_date}")
+            else:
+                print(f"数据库中没有关键词 '{keyword}' 的需求图谱数据")
+            
+            # 如果没有数据或者没有查询到结果，清空表格
+            self.demand_table.clear()
+            self.demand_table.setRowCount(0)
+            
+            # 显示无数据提示
+            html = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {
+                        background-color: #1a237e;
+                        color: white;
+                        font-family: Arial, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                    }
+                    .message {
+                        text-align: center;
+                        padding: 20px;
+                    }
+                    h2 {
+                        margin-bottom: 10px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="message">
+                    <h2>暂无需求图谱数据</h2>
+                    <p>请先进行数据采集</p>
+                </div>
+            </body>
+            </html>
+            """
+            self.demand_view.setHtml(html)
 
         except Exception as e:
             logging.error(f"分析需求图谱数据失败: {str(e)}")
-            raise
+            print(f"分析需求图谱数据出错: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     def create_demand_graph(self, keyword, results):
         """创建需求图谱可视化"""
@@ -2286,12 +2519,12 @@ class WelcomeWindow(QMainWindow):
         layout = QVBoxLayout(chart_widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        
+
         # 创建 WebEngineView
         self.trend_view = QWebEngineView()
         self.trend_view.setMinimumHeight(600)
         layout.addWidget(self.trend_view)
-        
+
         return chart_widget
 
     def update_trend_chart(self, dates, values):
@@ -2300,29 +2533,30 @@ class WelcomeWindow(QMainWindow):
             fig = self.trend_canvas.figure
             fig.clear()
             ax = fig.add_subplot(111)
-            
+
             # 绘制趋势线
             ax.plot(dates, values, color='#2196F3', linewidth=2, marker='o')
-            
+
             # 设置标题和标签
             ax.set_title("百度指数趋势", color='white', pad=20, fontsize=14)
             ax.set_xlabel("日期", color='white')
             ax.set_ylabel("指数", color='white')
-            
+
             # 设置刻度标签颜色
             ax.tick_params(colors='white')
-            
+
             # 旋转x轴标签
+            from matplotlib import pyplot as plt
             plt.setp(ax.get_xticklabels(), rotation=45)
-            
+
             # 添加网格
             ax.grid(True, linestyle='--', alpha=0.3)
-            
+
             # 调整布局
             fig.tight_layout()
-            
+
             # 刷新画布
             self.trend_canvas.draw()
-            
+
         except Exception as e:
             logging.error(f"更新趋势图表失败: {str(e)}")
