@@ -2166,7 +2166,7 @@ class WelcomeWindow(QMainWindow):
                     float_value = float(value) if value is not None else 0
                     # 确保省份名称与地图数据匹配
                     province_name = province.replace('省', '').replace('市', '').replace('自治区', '')
-                    map_data.append([province_name, float_value])
+                    map_data.append((province_name, float_value))
                     print(f"处理数据 - 省份: {province_name}, 值: {float_value}")
                 except (ValueError, TypeError) as e:
                     print(f"数据转换错误 - 省份: {province}, 值: {value}, 错误: {str(e)}")
@@ -2217,14 +2217,7 @@ class WelcomeWindow(QMainWindow):
                 ),
                 tooltip_opts=opts.TooltipOpts(
                     trigger="item", 
-                    formatter=JsCode("""
-                        function(params) {
-                            if (params.value === undefined) {
-                                return params.name + ': 暂无数据';
-                            }
-                            return params.name + ': ' + params.value;
-                        }
-                    """)
+                    formatter="{b}<br/>搜索指数: {c}"
                 ),
                 visualmap_opts=opts.VisualMapOpts(
                     min_=0,
