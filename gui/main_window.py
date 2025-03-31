@@ -1862,22 +1862,38 @@ class WelcomeWindow(QMainWindow):
                 region_latest_date = region_dates[0][0]
                 print(f"Debug - 使用地域数据最新可用日期: {region_latest_date}")
 
-                # 查询地域分布数据
+                # 查询地域分布数据 - 修改SQL确保数据类型正确
                 region_query = """
-                SELECT province, value
+                SELECT province, value 
                 FROM crowd_region_data
                 WHERE keyword = %s AND date = %s
-                ORDER BY CAST(value AS DECIMAL) DESC
+                AND value IS NOT NULL AND value != 'NULL' AND value > 0
+                ORDER BY value DESC
                 """
                 cursor.execute(region_query, (keyword, region_latest_date))
                 region_results = cursor.fetchall()
                 print(f"Debug - 地域分布查询结果: {region_results}")
 
                 if region_results:
-                    # 直接更新地域分布图表
-                    self.update_region_chart(region_results)
+                    # 验证数据是否有效
+                    has_valid_data = False
+                    for province, value in region_results:
+                        try:
+                            # 检查值是否可以转换为浮点数
+                            float_val = float(value) if value is not None else 0
+                            if float_val > 0:
+                                has_valid_data = True
+                                break
+                        except (ValueError, TypeError):
+                            continue
+
+                    if has_valid_data:
+                        # 直接更新地域分布图表
+                        self.update_region_table(region_results)
+                    else:
+                        print(f"No region distribution data found for keyword {keyword}")
                 else:
-                    print(f"No region distribution data found for keyword {keyword}")
+                    print(f"No available dates found for keyword {keyword} in region data")
             else:
                 print(f"No available dates found for keyword {keyword} in region data")
 
@@ -2152,142 +2168,145 @@ class WelcomeWindow(QMainWindow):
         html_content = page.render_embed()
         self.interest_tab.layout().itemAt(0).widget().setHtml(html_content)
 
-    def update_region_chart(self, results):
-        """更新地域分布地图"""
+    def update_region_table(self, results):
+        """更新地域分布表格（替代地图）"""
         try:
+            import json
+            print("\n----------地区数据渲染开始----------")
             if not results:
                 print("没有数据可供渲染")
                 return
-
-            # 准备地图数据
-            map_data = []
+                
+            # 准备数据
+            region_data = []
             for province, value in results:
                 try:
-                    float_value = float(value) if value is not None else 0
-                    # 确保省份名称与地图数据匹配
+                    # 尝试直接转换为浮点数
+                    if value is None or value == 'NULL' or value == 'NaN' or str(value).lower() == 'nan':
+                        print(f"跳过无效值 - 省份: {province}, 值: {value}")
+                        continue
+                    
+                    float_value = float(value)
+                    if float_value <= 0:
+                        print(f"跳过零或负值 - 省份: {province}, 值: {float_value}")
+                        continue
+                    
+                    # 省份名称处理
                     province_name = province.replace('省', '').replace('市', '').replace('自治区', '')
-                    map_data.append((province_name, float_value))
+                    
+                    # 添加数据
+                    region_data.append({"name": province_name, "value": float_value})
                     print(f"处理数据 - 省份: {province_name}, 值: {float_value}")
-                except (ValueError, TypeError) as e:
-                    print(f"数据转换错误 - 省份: {province}, 值: {value}, 错误: {str(e)}")
+                except Exception as e:
+                    print(f"数据处理错误 - 省份: {province}, 值: {value}, 错误: {str(e)}")
 
-            if not map_data:
+            if not region_data:
                 print("没有有效的数据")
                 return
 
             # 计算最大值
-            max_value = max(value for _, value in map_data)
+            max_value = max(item["value"] for item in region_data)
             print(f"最大值: {max_value}")
-
-            # 创建地图实例
-            map_chart = Map(init_opts=opts.InitOpts(
-                width="100%",
-                height="600px",
-                bg_color="#1a237e",
-                renderer="canvas",
-                is_horizontal_center=True
-            ))
-
-            # 添加数据
-            map_chart.add(
-                series_name="搜索指数",
-                data_pair=map_data,
-                maptype="china",
-                is_roam=True,
-                is_map_symbol_show=False,
-                label_opts=opts.LabelOpts(is_show=False),
-                itemstyle_opts=opts.ItemStyleOpts(
-                    color='#323c48',
-                    border_color='#111'
-                ),
-                emphasis_label_opts=opts.LabelOpts(is_show=True, color="#fff"),
-                emphasis_itemstyle_opts=opts.ItemStyleOpts(color="#ff5722")
-            )
-
-            # 设置全局选项
-            map_chart.set_global_opts(
-                title_opts=opts.TitleOpts(
-                    title="地域分布热力图",
-                    pos_left="center",
-                    pos_top="20px",
-                    title_textstyle_opts=opts.TextStyleOpts(
-                        color="#fff",
-                        font_size=20
-                    )
-                ),
-                tooltip_opts=opts.TooltipOpts(
-                    trigger="item",
-                    formatter="{b}<br/>搜索指数: {c}"
-                ),
-                visualmap_opts=opts.VisualMapOpts(
-                    min_=0,
-                    max_=max_value,
-                    range_text=["高", "低"],
-                    is_calculable=True,
-                    dimension=0,
-                    pos_left="10%",
-                    pos_top="middle",
-                    range_color=["#C6E2FF", "#1E90FF", "#002366"],
-                    textstyle_opts=opts.TextStyleOpts(color="#fff")
-                )
-            )
-
-            # 生成HTML
-            html = f"""
+            
+            # 创建HTML表格显示数据
+            html = """
             <!DOCTYPE html>
             <html>
             <head>
                 <meta charset="UTF-8">
-                <title>地域分布热力图</title>
+                <title>地域分布数据</title>
                 <style>
-                    body, html {{
+                    body, html {
                         margin: 0;
                         padding: 0;
-                        width: 100%;
-                        height: 100%;
-                        overflow: hidden;
                         background-color: #1a237e;
-                    }}
-                    .container {{
+                        color: white;
+                        font-family: Arial, sans-serif;
+                    }
+                    h2 {
+                        text-align: center;
+                        padding: 10px 0;
+                    }
+                    .container {
+                        width: 90%;
+                        margin: 0 auto;
+                    }
+                    .data-table {
                         width: 100%;
-                        height: 600px;
-                    }}
+                        border-collapse: collapse;
+                    }
+                    .data-table th, .data-table td {
+                        padding: 8px 15px;
+                        text-align: left;
+                        border-bottom: 1px solid rgba(255,255,255,0.2);
+                    }
+                    .data-table th {
+                        background-color: rgba(255,255,255,0.1);
+                        font-weight: bold;
+                    }
+                    .data-table tr:hover {
+                        background-color: rgba(255,255,255,0.1);
+                    }
+                    .data-table .value {
+                        text-align: right;
+                    }
+                    .color-bar {
+                        height: 10px;
+                        background-image: linear-gradient(to right, #C6E2FF, #1E90FF, #002366);
+                        margin-top: 5px;
+                    }
                 </style>
             </head>
             <body>
                 <div class="container">
-                    {map_chart.render_embed()}
+                    <h2>地域分布数据</h2>
+                    <div class="color-bar"></div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>省份</th>
+                                <th class="value">搜索指数</th>
+                                <th class="value">相对值 (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            """
+            
+            # 按值排序
+            sorted_data = sorted(region_data, key=lambda x: x["value"], reverse=True)
+            
+            # 添加表格行
+            for i, item in enumerate(sorted_data):
+                percentage = item["value"] / max_value * 100
+                html += f"""
+                <tr>
+                    <td>{i+1}</td>
+                    <td>{item["name"]}</td>
+                    <td class="value">{item["value"]:.0f}</td>
+                    <td class="value">{percentage:.1f}%</td>
+                </tr>
+                """
+            
+            html += """
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 20px; text-align: center;">
+                        注: 此表格显示了各省份搜索指数的排名，相对值是相对于最高值的百分比。
+                    </p>
                 </div>
-                <script>
-                    window.onload = function() {{
-                        console.log("地图数据已加载");
-                        var chart = document.querySelector('.container').__echarts__;
-                        if (chart) {{
-                            chart.resize();
-                            // 确保数据正确显示
-                            var option = chart.getOption();
-                            if (option && option.series && option.series[0]) {{
-                                console.log("地图数据:", option.series[0].data);
-                            }}
-                        }}
-                    }};
-                </script>
             </body>
             </html>
             """
 
             # 更新地图显示
             self.region_map_view.setHtml(html)
-            print("地图HTML已更新")
-
-            # 添加JavaScript控制台输出到Python
-            self.region_map_view.page().runJavaScript(
-                "console.log('Map rendered with PyEcharts'); document.title;",
-                lambda x: print(f"JavaScript log: {x}")
-            )
+            print("表格HTML已更新")
+            
+            print("----------地区数据渲染结束----------\n")
 
         except Exception as e:
-            logging.error(f"更新地域分布图表时出错: {str(e)}")
+            logging.error(f"更新地域分布表格时出错: {str(e)}")
             print(f"错误: {str(e)}")
             import traceback
             traceback.print_exc()

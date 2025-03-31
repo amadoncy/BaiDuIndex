@@ -197,12 +197,12 @@ def save_region_data_to_db(data_list, keyword, date):
         db = DatabaseConnection()
         cursor = db.connection.cursor()
         
-        # 创建表（如果不存在）
+        # 创建表（如果不存在）- 修改value字段类型为DECIMAL
         create_table_sql = """
         CREATE TABLE IF NOT EXISTS crowd_region_data (
             id INT AUTO_INCREMENT PRIMARY KEY,
             province VARCHAR(50) NOT NULL,
-            value INT NOT NULL,
+            value DECIMAL(10,2) NOT NULL,
             keyword VARCHAR(100) NOT NULL,
             date DATE NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -219,8 +219,15 @@ def save_region_data_to_db(data_list, keyword, date):
         # 处理每条数据
         for item in data_list:
             province = item.get('province', '')
-            value = int(item.get('value', 0))
             
+            # 确保value是有效的数值
+            try:
+                raw_value = item.get('value', 0)
+                value = float(raw_value) if raw_value is not None else 0.0
+            except (ValueError, TypeError):
+                print(f"警告: 无效的数值 '{raw_value}' 已被转换为0.0")
+                value = 0.0
+                
             # 检查数据是否已存在
             check_sql = """
             SELECT id, value FROM crowd_region_data 
@@ -246,7 +253,7 @@ def save_region_data_to_db(data_list, keyword, date):
                     date.strftime('%Y-%m-%d')
                 ))
                 inserted_count += 1
-            elif existing[1] != value:
+            elif abs(float(existing[1]) - value) > 0.01:  # 使用小误差范围比较浮点数
                 # 数据存在但有变化，更新数据
                 update_sql = """
                 UPDATE crowd_region_data 
