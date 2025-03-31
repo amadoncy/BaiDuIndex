@@ -1479,24 +1479,28 @@ class WelcomeWindow(QMainWindow):
                 color: white;
                 border: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 5px;
+                gridline-color: rgba(255, 255, 255, 0.1);
             }
             QHeaderView::section {
-                background-color: rgba(255, 255, 255, 0.2);
+                background-color: rgba(33, 150, 243, 0.8);
                 color: white;
-                padding: 5px;
+                padding: 8px;
                 border: 1px solid rgba(255, 255, 255, 0.1);
+                font-weight: bold;
             }
             QTableWidget::item {
+                padding: 8px;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                padding: 5px;
+                background-color: rgba(255, 255, 255, 0.05);
             }
             QTableWidget::item:selected {
-                background-color: rgba(255, 255, 255, 0.3);
+                background-color: rgba(33, 150, 243, 0.5);
+                color: white;
             }
         """)
 
         # 设置表格属性
-        self.demand_table.setAlternatingRowColors(True)
+        self.demand_table.setAlternatingRowColors(False)  # 关闭交替行颜色
         self.demand_table.horizontalHeader().setStretchLastSection(True)
         self.demand_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.demand_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
@@ -2152,6 +2156,7 @@ class WelcomeWindow(QMainWindow):
         """更新地域分布地图"""
         try:
             if not results:
+                print("没有数据可供渲染")
                 return
 
             # 准备地图数据
@@ -2159,7 +2164,7 @@ class WelcomeWindow(QMainWindow):
             for province, value in results:
                 try:
                     float_value = float(value) if value is not None else 0
-                    map_data.append({"name": province, "value": float_value})
+                    map_data.append((province, float_value))
                     print(f"处理数据 - 省份: {province}, 值: {float_value}")
                 except (ValueError, TypeError) as e:
                     print(f"数据转换错误 - 省份: {province}, 值: {value}, 错误: {str(e)}")
@@ -2169,30 +2174,22 @@ class WelcomeWindow(QMainWindow):
                 return
 
             # 计算最大值
-            max_value = max(item["value"] for item in map_data)
+            max_value = max(value for _, value in map_data)
             print(f"最大值: {max_value}")
 
-            # 使用更简单的方法 - 直接使用pyecharts生成图表
-            from pyecharts.charts import Map
-            from pyecharts import options as opts
-            
-            # 分离省份和值数组
-            provinces = [item["name"] for item in map_data]
-            values = [item["value"] for item in map_data]
-            
             # 创建地图实例
             map_chart = Map(init_opts=opts.InitOpts(
                 width="100%",
                 height="600px",
                 bg_color="#1a237e",
-                renderer="canvas",  # 使用Canvas而不是SVG
+                renderer="canvas",
                 is_horizontal_center=True
             ))
             
             # 添加数据
             map_chart.add(
                 series_name="搜索指数",
-                data_pair=list(zip(provinces, values)),
+                data_pair=map_data,
                 maptype="china",
                 is_roam=True,
                 is_map_symbol_show=False,
@@ -2205,7 +2202,7 @@ class WelcomeWindow(QMainWindow):
                 emphasis_itemstyle_opts=opts.ItemStyleOpts(color="#ff5722")
             )
             
-            # 添加视觉映射组件
+            # 设置全局选项
             map_chart.set_global_opts(
                 title_opts=opts.TitleOpts(
                     title="地域分布热力图",
@@ -2233,7 +2230,7 @@ class WelcomeWindow(QMainWindow):
                 )
             )
             
-            # 直接使用render_embed方法获取HTML
+            # 生成HTML
             html = f"""
             <!DOCTYPE html>
             <html>
@@ -2260,9 +2257,13 @@ class WelcomeWindow(QMainWindow):
                     {map_chart.render_embed()}
                 </div>
                 <script>
-                    setTimeout(function() {{
+                    window.onload = function() {{
                         console.log("地图数据已加载");
-                    }}, 1000);
+                        var chart = document.querySelector('.container').__echarts__;
+                        if (chart) {{
+                            chart.resize();
+                        }}
+                    }};
                 </script>
             </body>
             </html>
