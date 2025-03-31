@@ -1441,7 +1441,7 @@ class WelcomeWindow(QMainWindow):
         region_layout = QVBoxLayout(self.region_tab)
         region_layout.setContentsMargins(10, 10, 10, 10)
         region_layout.setSpacing(10)
-        
+
         # 创建地图视图
         self.region_map_view = QWebEngineView()
         self.region_map_view.setMinimumHeight(800)  # 增加地图高度
@@ -1505,13 +1505,13 @@ class WelcomeWindow(QMainWindow):
         self.demand_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.demand_table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
         self.demand_table.verticalHeader().setDefaultSectionSize(40)
-        
+
         # 设置选择行为
         self.demand_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.demand_table.setSelectionMode(QTableWidget.SingleSelection)
-        
+
         layout.addWidget(self.demand_table)
-        
+
         # 添加Web视图用于显示图表
         self.demand_view = QWebEngineView()
         self.demand_view.setMinimumHeight(400)
@@ -1556,7 +1556,7 @@ class WelcomeWindow(QMainWindow):
         """执行数据分析"""
         try:
             print("开始数据分析...")
-            
+
             # 连接数据库
             print("正在连接数据库...")
             connection = db_utils.get_connection()
@@ -1885,7 +1885,7 @@ class WelcomeWindow(QMainWindow):
             if age_dates:
                 age_latest_date = age_dates[0][0]
                 print(f"Debug - 使用年龄数据最新可用日期: {age_latest_date}")
-                
+
                 age_query = """
                 SELECT name, rate, tgi
                 FROM crowd_age_data
@@ -1906,7 +1906,7 @@ class WelcomeWindow(QMainWindow):
             if gender_dates:
                 gender_latest_date = gender_dates[0][0]
                 print(f"Debug - 使用性别数据最新可用日期: {gender_latest_date}")
-                
+
                 gender_query = """
                 SELECT name, rate, tgi
                 FROM crowd_gender_data
@@ -1927,7 +1927,7 @@ class WelcomeWindow(QMainWindow):
             if interest_dates:
                 interest_latest_date = interest_dates[0][0]
                 print(f"Debug - 使用兴趣数据最新可用日期: {interest_latest_date}")
-                
+
                 interest_query = """
                 SELECT category, name, value, tgi, rate
                 FROM crowd_interest_data
@@ -2187,7 +2187,7 @@ class WelcomeWindow(QMainWindow):
                 renderer="canvas",
                 is_horizontal_center=True
             ))
-            
+
             # 添加数据
             map_chart.add(
                 series_name="搜索指数",
@@ -2203,7 +2203,7 @@ class WelcomeWindow(QMainWindow):
                 emphasis_label_opts=opts.LabelOpts(is_show=True, color="#fff"),
                 emphasis_itemstyle_opts=opts.ItemStyleOpts(color="#ff5722")
             )
-            
+
             # 设置全局选项
             map_chart.set_global_opts(
                 title_opts=opts.TitleOpts(
@@ -2216,7 +2216,7 @@ class WelcomeWindow(QMainWindow):
                     )
                 ),
                 tooltip_opts=opts.TooltipOpts(
-                    trigger="item", 
+                    trigger="item",
                     formatter="{b}<br/>搜索指数: {c}"
                 ),
                 visualmap_opts=opts.VisualMapOpts(
@@ -2231,7 +2231,7 @@ class WelcomeWindow(QMainWindow):
                     textstyle_opts=opts.TextStyleOpts(color="#fff")
                 )
             )
-            
+
             # 生成HTML
             html = f"""
             <!DOCTYPE html>
@@ -2275,11 +2275,11 @@ class WelcomeWindow(QMainWindow):
             </body>
             </html>
             """
-            
+
             # 更新地图显示
             self.region_map_view.setHtml(html)
             print("地图HTML已更新")
-            
+
             # 添加JavaScript控制台输出到Python
             self.region_map_view.page().runJavaScript(
                 "console.log('Map rendered with PyEcharts'); document.title;",
@@ -2296,7 +2296,7 @@ class WelcomeWindow(QMainWindow):
         """分析需求图谱数据"""
         try:
             print(f"开始分析需求图谱数据: keyword={keyword}, date={date}")
-            
+
             # 首先检查表中是否有这个关键词的数据，并获取最新日期
             check_dates_query = """
             SELECT DISTINCT date FROM human_request_data 
@@ -2306,11 +2306,11 @@ class WelcomeWindow(QMainWindow):
             """
             cursor.execute(check_dates_query, (keyword,))
             date_result = cursor.fetchone()
-            
+
             if date_result:
                 latest_date = date_result[0]
                 print(f"找到需求图谱数据的最新日期: {latest_date}")
-                
+
                 # 查询需求图谱数据，使用最新日期和关键词
                 query = """
                 SELECT DISTINCT word, pv, ratio, sim 
@@ -2321,10 +2321,10 @@ class WelcomeWindow(QMainWindow):
                 """
                 cursor.execute(query, (keyword, latest_date))
                 results = cursor.fetchall()
-                
+
                 if results:
                     print(f"获取到 {len(results)} 条需求图谱数据")
-                    
+
                     # 更新表格数据
                     self.demand_table.clear()
                     self.demand_table.setColumnCount(4)
@@ -2358,20 +2358,20 @@ class WelcomeWindow(QMainWindow):
                         header_item = self.demand_table.horizontalHeaderItem(col)
                         if header_item:
                             header_item.setToolTip(tooltip)
-                            
+
                     # 创建图表可视化
                     self.create_demand_graph(keyword, results)
-                    
+
                     return
                 else:
                     print(f"没有找到需求图谱数据: keyword={keyword}, date={latest_date}")
             else:
                 print(f"数据库中没有关键词 '{keyword}' 的需求图谱数据")
-            
+
             # 如果没有数据或者没有查询到结果，清空表格
             self.demand_table.clear()
             self.demand_table.setRowCount(0)
-            
+
             # 显示无数据提示
             html = """
             <!DOCTYPE html>

@@ -435,6 +435,7 @@ def save_data_to_db(data):
         batch_size = 100
         records_to_insert = []
         inserted_count = 0
+        updated_count = 0
         
         for i in range(0, len(data), batch_size):
             batch = data[i:min(i + batch_size, len(data))]
@@ -447,13 +448,28 @@ def save_data_to_db(data):
                 index_value = int(float(item["指数"]))
                 
                 # 检查数据是否已存在
-                if not check_data_exists(cursor, date_str, keyword, area):
+                cursor.execute("""
+                    SELECT id, index_value FROM baidu_index_trends 
+                    WHERE date = %s AND keyword = %s AND area = %s
+                """, (date_str, keyword, area))
+                
+                existing = cursor.fetchone()
+                if not existing:
+                    # 不存在，插入新数据
                     current_batch.append((
                         date_str,
                         index_value,
                         area,
                         keyword
                     ))
+                elif existing[1] != index_value:
+                    # 存在但指数值不同，进行更新
+                    cursor.execute("""
+                        UPDATE baidu_index_trends 
+                        SET index_value = %s, created_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """, (index_value, existing[0]))
+                    updated_count += 1
             
             # 批量插入当前批次的新数据
             if current_batch:
@@ -469,8 +485,8 @@ def save_data_to_db(data):
                 current_batch.clear()
                 gc.collect()
         
-        if inserted_count > 0:
-            print(f"成功插入 {inserted_count} 条新数据到数据库")
+        if inserted_count > 0 or updated_count > 0:
+            print(f"成功插入 {inserted_count} 条新数据，更新 {updated_count} 条已有数据")
         
         # 检查是否需要补充数据
         if data:

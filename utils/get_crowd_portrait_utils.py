@@ -211,30 +211,58 @@ def save_region_data_to_db(data_list, keyword, date):
         """
         cursor.execute(create_table_sql)
         
-        # 批量插入数据
-        insert_sql = """
-        INSERT INTO crowd_region_data (province, value, keyword, date)
-        VALUES (%s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-        value = VALUES(value)
-        """
+        # 追踪插入和更新的数量
+        inserted_count = 0
+        updated_count = 0
+        skipped_count = 0
         
-        values = []
+        # 处理每条数据
         for item in data_list:
-            values.append((
-                item.get('province', ''),
-                int(item.get('value', 0)),
+            province = item.get('province', '')
+            value = int(item.get('value', 0))
+            
+            # 检查数据是否已存在
+            check_sql = """
+            SELECT id, value FROM crowd_region_data 
+            WHERE province = %s AND keyword = %s AND date = %s
+            """
+            cursor.execute(check_sql, (
+                province,
                 keyword[:100],
                 date.strftime('%Y-%m-%d')
             ))
-        
-        if values:
-            cursor.executemany(insert_sql, values)
-            db.connection.commit()
-            print(f"成功保存 {len(values)} 条区域分布数据到MySQL数据库")
-            return True
             
-        return False
+            existing = cursor.fetchone()
+            if not existing:
+                # 不存在，插入新数据
+                insert_sql = """
+                INSERT INTO crowd_region_data (province, value, keyword, date)
+                VALUES (%s, %s, %s, %s)
+                """
+                cursor.execute(insert_sql, (
+                    province,
+                    value,
+                    keyword[:100],
+                    date.strftime('%Y-%m-%d')
+                ))
+                inserted_count += 1
+            elif existing[1] != value:
+                # 数据存在但有变化，更新数据
+                update_sql = """
+                UPDATE crowd_region_data 
+                SET value = %s, created_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                """
+                cursor.execute(update_sql, (value, existing[0]))
+                updated_count += 1
+            else:
+                # 数据完全相同，跳过
+                skipped_count += 1
+        
+        # 提交事务
+        db.connection.commit()
+        print(f"区域分布数据处理完成: 插入 {inserted_count} 条, 更新 {updated_count} 条, 跳过 {skipped_count} 条")
+        return inserted_count > 0 or updated_count > 0
         
     except Exception as e:
         print(f"保存区域分布数据到MySQL数据库时出错: {str(e)}")
@@ -271,34 +299,63 @@ def save_gender_data_to_db(data_list, keyword, date):
         """
         cursor.execute(create_table_sql)
         
-        insert_sql = """
-        INSERT INTO crowd_gender_data (typeId, name, tgi, rate, keyword, date)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-        typeId = VALUES(typeId),
-        tgi = VALUES(tgi),
-        rate = VALUES(rate)
-        """
+        # 追踪插入和更新的数量
+        inserted_count = 0
+        updated_count = 0
+        skipped_count = 0
         
-        values = []
+        # 处理每条数据
         for item in data_list:
             if item.get('desc') in ['男', '女']:
-                values.append((
-                    int(item.get('typeId', 0)),
-                    item.get('desc', ''),
-                    float(item.get('tgi', 0)),
-                    float(item.get('rate', 0)),
+                name = item.get('desc', '')
+                typeId = int(item.get('typeId', 0))
+                tgi = float(item.get('tgi', 0))
+                rate = float(item.get('rate', 0))
+                
+                # 检查数据是否已存在
+                check_sql = """
+                SELECT id, typeId, tgi, rate FROM crowd_gender_data 
+                WHERE name = %s AND keyword = %s AND date = %s
+                """
+                cursor.execute(check_sql, (
+                    name,
                     keyword[:100],
                     date.strftime('%Y-%m-%d')
                 ))
+                
+                existing = cursor.fetchone()
+                if not existing:
+                    # 不存在，插入新数据
+                    insert_sql = """
+                    INSERT INTO crowd_gender_data (typeId, name, tgi, rate, keyword, date)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(insert_sql, (
+                        typeId,
+                        name,
+                        tgi,
+                        rate,
+                        keyword[:100],
+                        date.strftime('%Y-%m-%d')
+                    ))
+                    inserted_count += 1
+                elif existing[1] != typeId or abs(existing[2] - tgi) > 0.01 or abs(existing[3] - rate) > 0.01:
+                    # 数据存在但有变化，更新数据
+                    update_sql = """
+                    UPDATE crowd_gender_data 
+                    SET typeId = %s, tgi = %s, rate = %s, created_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                    """
+                    cursor.execute(update_sql, (typeId, tgi, rate, existing[0]))
+                    updated_count += 1
+                else:
+                    # 数据完全相同，跳过
+                    skipped_count += 1
         
-        if values:
-            cursor.executemany(insert_sql, values)
-            db.connection.commit()
-            print(f"成功保存 {len(values)} 条性别数据到MySQL数据库")
-            return True
-            
-        return False
+        # 提交事务
+        db.connection.commit()
+        print(f"性别数据处理完成: 插入 {inserted_count} 条, 更新 {updated_count} 条, 跳过 {skipped_count} 条")
+        return inserted_count > 0 or updated_count > 0
         
     except Exception as e:
         print(f"保存性别数据到MySQL数据库时出错: {str(e)}")
@@ -335,34 +392,63 @@ def save_age_data_to_db(data_list, keyword, date):
         """
         cursor.execute(create_table_sql)
         
-        insert_sql = """
-        INSERT INTO crowd_age_data (typeId, name, tgi, rate, keyword, date)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-        typeId = VALUES(typeId),
-        tgi = VALUES(tgi),
-        rate = VALUES(rate)
-        """
+        # 追踪插入和更新的数量
+        inserted_count = 0
+        updated_count = 0
+        skipped_count = 0
         
-        values = []
+        # 处理每条数据
         for item in data_list:
             if item.get('desc') not in ['男', '女']:
-                values.append((
-                    int(item.get('typeId', 0)),
-                    item.get('desc', ''),
-                    float(item.get('tgi', 0)),
-                    float(item.get('rate', 0)),
+                name = item.get('desc', '')
+                typeId = int(item.get('typeId', 0))
+                tgi = float(item.get('tgi', 0))
+                rate = float(item.get('rate', 0))
+                
+                # 检查数据是否已存在
+                check_sql = """
+                SELECT id, typeId, tgi, rate FROM crowd_age_data 
+                WHERE name = %s AND keyword = %s AND date = %s
+                """
+                cursor.execute(check_sql, (
+                    name,
                     keyword[:100],
                     date.strftime('%Y-%m-%d')
                 ))
+                
+                existing = cursor.fetchone()
+                if not existing:
+                    # 不存在，插入新数据
+                    insert_sql = """
+                    INSERT INTO crowd_age_data (typeId, name, tgi, rate, keyword, date)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(insert_sql, (
+                        typeId,
+                        name,
+                        tgi,
+                        rate,
+                        keyword[:100],
+                        date.strftime('%Y-%m-%d')
+                    ))
+                    inserted_count += 1
+                elif existing[1] != typeId or abs(existing[2] - tgi) > 0.01 or abs(existing[3] - rate) > 0.01:
+                    # 数据存在但有变化，更新数据
+                    update_sql = """
+                    UPDATE crowd_age_data 
+                    SET typeId = %s, tgi = %s, rate = %s, created_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                    """
+                    cursor.execute(update_sql, (typeId, tgi, rate, existing[0]))
+                    updated_count += 1
+                else:
+                    # 数据完全相同，跳过
+                    skipped_count += 1
         
-        if values:
-            cursor.executemany(insert_sql, values)
-            db.connection.commit()
-            print(f"成功保存 {len(values)} 条年龄数据到MySQL数据库")
-            return True
-            
-        return False
+        # 提交事务
+        db.connection.commit()
+        print(f"年龄数据处理完成: 插入 {inserted_count} 条, 更新 {updated_count} 条, 跳过 {skipped_count} 条")
+        return inserted_count > 0 or updated_count > 0
         
     except Exception as e:
         print(f"保存年龄数据到MySQL数据库时出错: {str(e)}")
@@ -384,13 +470,6 @@ def save_interest_data_to_db(data_list, keyword, date):
         db = DatabaseConnection()
         cursor = db.connection.cursor()
         
-        # 先删除已存在的相同日期和关键词的数据
-        delete_sql = """
-        DELETE FROM crowd_interest_data 
-        WHERE keyword = %s AND data_date = %s
-        """
-        cursor.execute(delete_sql, (keyword[:100], date.strftime('%Y-%m-%d')))
-        
         # 创建表（如果不存在）
         create_table_sql = """
         CREATE TABLE IF NOT EXISTS crowd_interest_data (
@@ -408,31 +487,64 @@ def save_interest_data_to_db(data_list, keyword, date):
         """
         cursor.execute(create_table_sql)
         
-        # 插入新数据
-        insert_sql = """
-        INSERT INTO crowd_interest_data (name, value, tgi, rate, category, keyword, data_date)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
+        # 追踪插入和更新的数量
+        inserted_count = 0
+        updated_count = 0
+        skipped_count = 0
         
-        values = []
+        # 处理每条数据
         for item in data_list:
-            values.append((
-                item.get('name', '')[:100],
-                int(item.get('value', 0)),
-                int(item.get('tgi', 0)),
-                float(item.get('rate', 0)),
-                item.get('category', '未知'),
+            name = item.get('name', '')[:100]
+            value = int(item.get('value', 0))
+            tgi = int(item.get('tgi', 0))
+            rate = float(item.get('rate', 0))
+            category = item.get('category', '未知')
+            
+            # 检查数据是否已存在
+            check_sql = """
+            SELECT id, value, tgi, rate FROM crowd_interest_data 
+            WHERE name = %s AND keyword = %s AND data_date = %s
+            """
+            cursor.execute(check_sql, (
+                name,
                 keyword[:100],
                 date.strftime('%Y-%m-%d')
             ))
-        
-        if values:
-            cursor.executemany(insert_sql, values)
-            db.connection.commit()
-            print(f"成功保存 {len(values)} 条兴趣分布数据到MySQL数据库")
-            return True
             
-        return False
+            existing = cursor.fetchone()
+            if not existing:
+                # 不存在，插入新数据
+                insert_sql = """
+                INSERT INTO crowd_interest_data (name, value, tgi, rate, category, keyword, data_date)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """
+                cursor.execute(insert_sql, (
+                    name,
+                    value,
+                    tgi,
+                    rate,
+                    category,
+                    keyword[:100],
+                    date.strftime('%Y-%m-%d')
+                ))
+                inserted_count += 1
+            elif existing[1] != value or existing[2] != tgi or abs(existing[3] - rate) > 0.01:
+                # 数据存在但有变化，更新数据
+                update_sql = """
+                UPDATE crowd_interest_data 
+                SET value = %s, tgi = %s, rate = %s, created_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                """
+                cursor.execute(update_sql, (value, tgi, rate, existing[0]))
+                updated_count += 1
+            else:
+                # 数据完全相同，跳过
+                skipped_count += 1
+        
+        # 提交事务
+        db.connection.commit()
+        print(f"兴趣分布数据处理完成: 插入 {inserted_count} 条, 更新 {updated_count} 条, 跳过 {skipped_count} 条")
+        return inserted_count > 0 or updated_count > 0
         
     except Exception as e:
         print(f"保存兴趣分布数据到MySQL数据库时出错: {str(e)}")

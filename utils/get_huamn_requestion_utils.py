@@ -31,36 +31,62 @@ def save_data_to_db(data_list, keyword, date):
         """
         cursor.execute(create_table_sql)
 
-        # 批量插入数据
-        insert_sql = """
-        INSERT INTO human_request_data (word, pv, ratio, sim, keyword, date)
-        VALUES (%s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-        pv = VALUES(pv),
-        ratio = VALUES(ratio),
-        sim = VALUES(sim)
-        """
+        # 追踪插入和更新的数量
+        inserted_count = 0
+        updated_count = 0
+        skipped_count = 0
 
-        # 准备批量插入的数据
-        values = []
+        # 处理每条数据
         for item in data_list:
-            values.append((
-                item.get('word', '')[:255],  # 限制字段长度
-                int(item.get('pv', 0)),
-                int(item.get('ratio', 0)),
-                int(item.get('sim', 0)),
-                keyword[:100],  # 限制字段长度
+            word = item.get('word', '')[:255]  # 限制字段长度
+            pv = int(item.get('pv', 0))
+            ratio = int(item.get('ratio', 0))
+            sim = int(item.get('sim', 0))
+            
+            # 检查数据是否已存在
+            check_sql = """
+            SELECT id, pv, ratio, sim FROM human_request_data 
+            WHERE word = %s AND keyword = %s AND date = %s
+            """
+            cursor.execute(check_sql, (
+                word,
+                keyword[:100],
                 date.strftime('%Y-%m-%d')
             ))
+            
+            existing = cursor.fetchone()
+            if not existing:
+                # 不存在，插入新数据
+                insert_sql = """
+                INSERT INTO human_request_data (word, pv, ratio, sim, keyword, date)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                cursor.execute(insert_sql, (
+                    word,
+                    pv,
+                    ratio,
+                    sim,
+                    keyword[:100],
+                    date.strftime('%Y-%m-%d')
+                ))
+                inserted_count += 1
+            elif existing[1] != pv or existing[2] != ratio or existing[3] != sim:
+                # 数据存在但有变化，更新数据
+                update_sql = """
+                UPDATE human_request_data 
+                SET pv = %s, ratio = %s, sim = %s, created_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                """
+                cursor.execute(update_sql, (pv, ratio, sim, existing[0]))
+                updated_count += 1
+            else:
+                # 数据完全相同，跳过
+                skipped_count += 1
 
-        # 执行批量插入
-        if values:
-            cursor.executemany(insert_sql, values)
-            db.connection.commit()
-            print(f"成功保存 {len(values)} 条数据到MySQL数据库")
-            return True
-
-        return False
+        # 提交事务
+        db.connection.commit()
+        print(f"数据处理完成: 插入 {inserted_count} 条, 更新 {updated_count} 条, 跳过 {skipped_count} 条")
+        return inserted_count > 0 or updated_count > 0
 
     except Exception as e:
         print(f"保存数据到MySQL数据库时出错: {str(e)}")
