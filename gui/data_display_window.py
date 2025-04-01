@@ -17,9 +17,10 @@ from utils.data_prediction_utils import DataPredictionUtils
 import logging
 
 class DataDisplayWindow(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, username=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("百度指数 - 数据分析与预测")
+        self.username = username
         self.prediction_utils = DataPredictionUtils()
         self.init_ui()
         
@@ -252,7 +253,7 @@ class DataDisplayWindow(QWidget):
         return tab
 
     def load_keywords(self):
-        """从数据库加载关键词列表"""
+        """加载关键词列表"""
         try:
             # 清空现有的关键词
             self.keyword_combo.clear()
@@ -276,10 +277,14 @@ class DataDisplayWindow(QWidget):
             for query in queries:
                 try:
                     cursor.execute(query)
-                    keywords.update(row[0] for row in cursor.fetchall())
+                    results = cursor.fetchall()
+                    keywords.update(row[0] for row in results)
+                    print(f"查询 {query} 结果: {results}")
                 except Exception as e:
                     logging.warning(f"执行查询失败: {query}, 错误: {str(e)}")
                     continue
+            
+            print(f"找到的所有关键词: {keywords}")
             
             # 添加排序后的关键词
             sorted_keywords = sorted(keywords)
@@ -290,15 +295,18 @@ class DataDisplayWindow(QWidget):
                 self.keyword_combo.addItem("请先采集数据")
                 self.predict_btn.setEnabled(False)
                 logging.warning("没有找到任何关键词数据")
+                print("没有找到任何关键词数据")
             else:
                 self.predict_btn.setEnabled(True)
                 logging.info(f"成功加载 {len(sorted_keywords)} 个关键词")
+                print(f"成功加载 {len(sorted_keywords)} 个关键词: {sorted_keywords}")
             
             cursor.close()
             connection.close()
             
         except Exception as e:
             logging.error(f"加载关键词失败: {str(e)}")
+            print(f"加载关键词失败: {str(e)}")
             self.keyword_combo.clear()
             self.keyword_combo.addItem("数据库连接失败")
             self.predict_btn.setEnabled(False)

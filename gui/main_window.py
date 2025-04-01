@@ -895,7 +895,18 @@ class WelcomeWindow(QMainWindow):
 
     def create_data_display_page(self):
         """创建数据展示页面"""
-        return DataDisplayWindow()
+        # 创建数据预测页面并保存用户名
+        display_window = DataDisplayWindow(self.username)
+        
+        # 当数据分析完成后，通知数据展示页面刷新数据
+        def refresh_data():
+            display_window.load_keywords()
+            
+        # 保证当数据分析完成时，自动刷新数据展示页面
+        self.content_stack.currentChanged.connect(lambda index: 
+            refresh_data() if index == 2 else None)  # 索引2是数据展示页面
+        
+        return display_window
 
     def create_export_page(self):
         """创建导出数据页面"""
