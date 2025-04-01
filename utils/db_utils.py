@@ -9,6 +9,7 @@ import os
 # 配置日志
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 class DatabaseConnection:
     def __init__(self):
         self.connection = None
@@ -19,8 +20,9 @@ class DatabaseConnection:
         """连接到数据库"""
         try:
             logging.debug("尝试连接数据库...")
-            logging.debug(f"连接信息: host={DB_CONFIG['host']}, port={DB_CONFIG['port']}, user={DB_CONFIG['user']}, database={DB_CONFIG['db']}")
-            
+            logging.debug(
+                f"连接信息: host={DB_CONFIG['host']}, port={DB_CONFIG['port']}, user={DB_CONFIG['user']}, database={DB_CONFIG['db']}")
+
             self.connection = pymysql.connect(
                 host=DB_CONFIG['host'],
                 port=DB_CONFIG['port'],
@@ -36,7 +38,7 @@ class DatabaseConnection:
             error_code = e.args[0]
             error_message = e.args[1] if len(e.args) > 1 else str(e)
             logging.error(f"数据库连接失败: [Error {error_code}] {error_message}")
-            
+
             if error_code == 1045:  # 访问被拒绝
                 logging.error("用户名或密码错误")
             elif error_code == 1049:  # 数据库不存在
@@ -111,7 +113,7 @@ class DatabaseConnection:
 
             self.connection.commit()
             logging.info("所有数据库表创建成功")
-            
+
             # 验证表是否存在
             with self.connection.cursor() as cursor:
                 cursor.execute("SHOW TABLES LIKE 'users'")
@@ -119,19 +121,19 @@ class DatabaseConnection:
                     logging.info("users表已存在")
                 else:
                     logging.error("users表创建失败")
-                    
+
                 cursor.execute("SHOW TABLES LIKE 'cookies'")
                 if cursor.fetchone():
                     logging.info("cookies表已存在")
                 else:
                     logging.error("cookies表创建失败")
-                    
+
                 cursor.execute("SHOW TABLES LIKE 'area_codes'")
                 if cursor.fetchone():
                     logging.info("area_codes表已存在")
                 else:
                     logging.error("area_codes表创建失败")
-                    
+
         except Exception as e:
             logging.error(f"创建数据库表失败: {str(e)}")
             raise
@@ -175,7 +177,7 @@ class DatabaseConnection:
                     WHERE username = %s
                 """, (username,))
                 result = cursor.fetchone()
-                
+
                 if result:
                     cookie_data, created_at = result
                     # 检查cookies是否过期（30分钟）
@@ -223,7 +225,7 @@ class DatabaseConnection:
             with self.connection.cursor() as cursor:
                 conditions = []
                 params = []
-                
+
                 if region:
                     conditions.append("region = %s")
                     params.append(region)
@@ -233,10 +235,10 @@ class DatabaseConnection:
                 if city:
                     conditions.append("city = %s")
                     params.append(city)
-                
+
                 where_clause = " AND ".join(conditions) if conditions else "1"
                 sql = f"SELECT code FROM area_codes WHERE {where_clause}"
-                
+
                 cursor.execute(sql, tuple(params))
                 result = cursor.fetchone()
                 return result[0] if result else None
@@ -279,6 +281,7 @@ class DatabaseConnection:
             logging.error(f"数据库连接测试失败：{str(e)}")
             return False
 
+
 class DatabaseManager:
     def __init__(self):
         # 获取项目根目录
@@ -297,7 +300,7 @@ class DatabaseManager:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # 创建需求图谱数据表
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS human_request_data (
@@ -311,7 +314,7 @@ class DatabaseManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             ''')
-            
+
             conn.commit()
             print("数据库表创建成功")
         except Exception as e:
@@ -324,13 +327,13 @@ class DatabaseManager:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             # 准备插入语句
             insert_sql = '''
             INSERT INTO human_request_data (word, pv, ratio, sim, keyword, date)
             VALUES (?, ?, ?, ?, ?, ?)
             '''
-            
+
             # 批量插入数据
             for item in data_list:
                 try:
@@ -345,7 +348,7 @@ class DatabaseManager:
                 except Exception as e:
                     print(f"插入数据时出错: {str(e)}")
                     print(f"问题数据: {item}")
-            
+
             conn.commit()
             print(f"成功保存 {len(data_list)} 条数据")
             return True
@@ -360,10 +363,10 @@ class DatabaseManager:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             query = "SELECT * FROM human_request_data WHERE 1=1"
             params = []
-            
+
             if keyword:
                 query += " AND keyword = ?"
                 params.append(keyword)
@@ -373,9 +376,9 @@ class DatabaseManager:
             if end_date:
                 query += " AND date <= ?"
                 params.append(end_date)
-                
+
             query += " ORDER BY date DESC, id DESC"
-            
+
             cursor.execute(query, params)
             results = cursor.fetchall()
             print(f"查询到 {len(results)} 条数据")
@@ -385,6 +388,7 @@ class DatabaseManager:
             return []
         finally:
             conn.close()
+
 
 def get_connection():
     """获取数据库连接"""
@@ -402,6 +406,7 @@ def get_connection():
         logging.error(f"数据库连接失败: {str(e)}")
         raise
 
+
 def execute_query(query, params=None):
     """执行查询语句"""
     try:
@@ -416,6 +421,7 @@ def execute_query(query, params=None):
         logging.error(f"执行查询失败: {str(e)}")
         raise
 
+
 def execute_update(query, params=None):
     """执行更新语句"""
     try:
@@ -429,6 +435,7 @@ def execute_update(query, params=None):
         logging.error(f"执行更新失败: {str(e)}")
         raise
 
+
 def execute_many(query, params_list):
     """执行批量更新语句"""
     try:
@@ -441,6 +448,7 @@ def execute_many(query, params_list):
     except Exception as e:
         logging.error(f"执行批量更新失败: {str(e)}")
         raise
+
 
 # 测试代码
 if __name__ == "__main__":

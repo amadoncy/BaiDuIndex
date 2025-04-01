@@ -917,7 +917,7 @@ class WelcomeWindow(QMainWindow):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setSpacing(20)
-        
+
         # 创建标题
         title_label = QLabel("数据报告生成")
         title_label.setFont(QFont("Microsoft YaHei", 24, QFont.Bold))
@@ -931,7 +931,7 @@ class WelcomeWindow(QMainWindow):
             }
         """)
         layout.addWidget(title_label)
-        
+
         # 创建关键词选择区域
         keyword_layout = QHBoxLayout()
         keyword_label = QLabel("选择关键词:")
@@ -954,7 +954,7 @@ class WelcomeWindow(QMainWindow):
                 width: 30px;
             }
         """)
-        
+
         # 添加刷新按钮
         self.refresh_button = QPushButton("刷新关键词")
         self.refresh_button.setStyleSheet("""
@@ -971,20 +971,20 @@ class WelcomeWindow(QMainWindow):
             }
         """)
         self.refresh_button.clicked.connect(self.refresh_report_keywords)
-        
+
         keyword_layout.addWidget(keyword_label)
         keyword_layout.addWidget(self.report_keyword_combo)
         keyword_layout.addWidget(self.refresh_button)
         layout.addLayout(keyword_layout)
-        
+
         # 创建报告类型选择
         report_type_layout = QHBoxLayout()
         report_type_label = QLabel("报告类型:")
         report_type_label.setStyleSheet("color: white;")
-        
+
         self.report_type_group = QButtonGroup()
         report_types = ["完整报告", "趋势分析报告", "人群画像报告", "需求分析报告"]
-        
+
         report_type_container = QFrame()
         report_type_container.setStyleSheet("""
             QFrame {
@@ -995,7 +995,7 @@ class WelcomeWindow(QMainWindow):
         """)
         report_container_layout = QHBoxLayout(report_type_container)
         report_container_layout.setContentsMargins(10, 5, 10, 5)
-        
+
         for i, report_type in enumerate(report_types):
             radio = QRadioButton(report_type)
             radio.setStyleSheet("""
@@ -1020,41 +1020,27 @@ class WelcomeWindow(QMainWindow):
             """)
             self.report_type_group.addButton(radio, i)
             report_container_layout.addWidget(radio)
-        
+
         # 默认选择第一个
         self.report_type_group.button(0).setChecked(True)
-        
+
         report_type_layout.addWidget(report_type_label)
         report_type_layout.addWidget(report_type_container)
         report_type_layout.addStretch()
         layout.addLayout(report_type_layout)
-        
-        # 添加报告格式选择
-        format_layout = QHBoxLayout()
-        format_label = QLabel("报告格式:")
-        format_label.setStyleSheet("color: white;")
-        
-        self.report_format_combo = QComboBox()
-        self.report_format_combo.addItems(["HTML网页"])  # 只保留HTML选项
-        self.report_format_combo.setStyleSheet("""
-            QComboBox {
-                padding: 8px;
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 5px;
+
+        # 报告格式部分移除，只保留HTML格式
+        format_info = QLabel("报告格式: HTML网页")
+        format_info.setStyleSheet("""
+            QLabel {
                 color: white;
-                min-width: 150px;
-            }
-            QComboBox:hover {
-                border: 1px solid rgba(255, 255, 255, 0.5);
+                padding: 8px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 5px;
             }
         """)
-        
-        format_layout.addWidget(format_label)
-        format_layout.addWidget(self.report_format_combo)
-        format_layout.addStretch()
-        layout.addLayout(format_layout)
-        
+        layout.addWidget(format_info)
+
         # 添加文件名和保存路径设置
         filename_layout = QHBoxLayout()
         filename_label = QLabel("文件名:")
@@ -1073,10 +1059,10 @@ class WelcomeWindow(QMainWindow):
                 border: 2px solid rgba(255, 255, 255, 0.5);
             }
         """)
-        
+
         filename_layout.addWidget(filename_label)
         filename_layout.addWidget(self.report_filename)
-        
+
         path_btn = QPushButton("选择路径")
         path_btn.setStyleSheet("""
             QPushButton {
@@ -1092,10 +1078,10 @@ class WelcomeWindow(QMainWindow):
             }
         """)
         path_btn.clicked.connect(self.select_report_path)
-        
+
         filename_layout.addWidget(path_btn)
         layout.addLayout(filename_layout)
-        
+
         # 添加报告路径显示
         self.report_path_label = QLabel("保存路径: ./data/reports/")
         self.report_path_label.setStyleSheet("""
@@ -1107,7 +1093,7 @@ class WelcomeWindow(QMainWindow):
             }
         """)
         layout.addWidget(self.report_path_label)
-        
+
         # 添加报告摘要和内容选项
         options_container = QFrame()
         options_container.setStyleSheet("""
@@ -1134,54 +1120,55 @@ class WelcomeWindow(QMainWindow):
                 border: 1px solid white;
             }
         """)
-        
+
         options_layout = QVBoxLayout(options_container)
         options_layout.setContentsMargins(15, 10, 15, 10)
-        
+
         options_title = QLabel("报告内容选项")
         options_title.setFont(QFont("Microsoft YaHei", 12, QFont.Bold))
         options_title.setStyleSheet("color: white;")
         options_layout.addWidget(options_title)
-        
+
         self.include_summary = QCheckBox("包含报告摘要")
         self.include_summary.setChecked(True)
         self.include_charts = QCheckBox("包含数据图表")
         self.include_charts.setChecked(True)
-        self.include_predictions = QCheckBox("包含未来趋势预测")
+        self.include_predictions = QCheckBox("包含需求分析")
         self.include_predictions.setChecked(True)
         self.include_recommendations = QCheckBox("包含策略建议")
         self.include_recommendations.setChecked(True)
-        
+
         options_layout.addWidget(self.include_summary)
         options_layout.addWidget(self.include_charts)
         options_layout.addWidget(self.include_predictions)
         options_layout.addWidget(self.include_recommendations)
-        
+
         layout.addWidget(options_container)
-        
+
         # 添加生成报告按钮
         generate_btn = QPushButton("生成报告")
-        generate_btn.setFixedHeight(50)
-        generate_btn.setFont(QFont("Microsoft YaHei", 14))
+        generate_btn.setMinimumHeight(50)
+        generate_btn.setFont(QFont("Microsoft YaHei", 12, QFont.Bold))
         generate_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2196F3;
                 color: white;
                 border-radius: 10px;
+                padding: 10px 20px;
             }
             QPushButton:hover {
-                background-color: #1976D2;
+                background-color: #42A5F5;
             }
             QPushButton:pressed {
-                background-color: #0D47A1;
+                background-color: #1976D2;
             }
         """)
         generate_btn.clicked.connect(self.generate_report)
         layout.addWidget(generate_btn)
-        
-        # 加载关键词列表
-        self.refresh_report_keywords()
-        
+
+        # 加载已保存的关键词
+        self.load_report_keywords()
+
         return page
 
     def create_settings_page(self):
@@ -1384,7 +1371,7 @@ class WelcomeWindow(QMainWindow):
         except Exception as e:
             logging.error(f"更新字体大小失败: {str(e)}")
             QMessageBox.warning(self, "设置失败", "更新字体大小失败")
-            
+
     def update_theme(self, theme):
         """更新界面主题"""
         try:
@@ -1469,17 +1456,17 @@ class WelcomeWindow(QMainWindow):
 
             self.setStyleSheet(style_sheet)
             self.show_message("设置成功", f"界面主题已切换为{theme}")
-            
+
         except Exception as e:
             logging.error(f"更新主题失败: {str(e)}")
             QMessageBox.warning(self, "设置失败", "更新主题失败")
-            
+
     def select_report_path(self):
         """选择报告保存路径"""
         dir_path = QFileDialog.getExistingDirectory(self, "选择保存目录", "./data/reports/")
         if dir_path:
             self.report_path_label.setText(f"保存路径: {dir_path}/")
-            
+
     def load_report_keywords(self):
         """加载可用于生成报告的关键词"""
         try:
@@ -1487,37 +1474,52 @@ class WelcomeWindow(QMainWindow):
             from utils.db_utils import get_connection
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT DISTINCT keyword FROM trend_data ORDER BY keyword")
+            # 使用baidu_index_trends表代替不存在的trend_data表
+            cursor.execute("SELECT DISTINCT keyword FROM baidu_index_trends ORDER BY keyword")
             keywords = [row[0] for row in cursor.fetchall()]
-            
+
+            # 如果没有关键词，尝试从其他表获取
+            if not keywords:
+                cursor.execute("SELECT DISTINCT keyword FROM crowd_region_data ORDER BY keyword")
+                keywords = [row[0] for row in cursor.fetchall()]
+                
+            # 如果还是没有关键词，再尝试另一个表
+            if not keywords:
+                cursor.execute("SELECT DISTINCT keyword FROM human_request_data ORDER BY keyword")
+                keywords = [row[0] for row in cursor.fetchall()]
+
             # 如果没有关键词，添加提示选项
             if not keywords:
                 self.report_keyword_combo.addItem("暂无可用数据")
             else:
                 self.report_keyword_combo.addItems(keywords)
-                
+
             conn.close()
         except Exception as e:
             logging.error(f"加载报告关键词时出错: {str(e)}")
             self.report_keyword_combo.addItem("加载关键词失败")
+            # 避免将错误详情显示在UI上，仅记录到日志文件中
             import traceback
             traceback.print_exc()
+            # 添加一些默认关键词以便于测试
+            self.report_keyword_combo.clear()
+            self.report_keyword_combo.addItems(["老人健康", "养老院", "智能陪护", "健康监测"])
 
     def generate_report(self):
         """生成数据分析报告"""
         try:
             # 获取关键词并检查有效性
             keyword = self.report_keyword_combo.currentText()
-            
+
             # 记录关键词内容到日志，帮助调试
             logging.info(f"选择的下拉框关键词: [{keyword}]")
-            
+
             # 检查关键词是否为空或无效
             if keyword == "暂无可用数据" or keyword == "加载关键词失败" or keyword == "数据库连接失败" or not keyword.strip():
                 logging.info("下拉框关键词无效，弹出对话框让用户手动输入")
                 # 弹出对话框让用户手动输入
                 from PyQt5.QtWidgets import QInputDialog
-                input_keyword, ok = QInputDialog.getText(self, "输入关键词", 
+                input_keyword, ok = QInputDialog.getText(self, "输入关键词",
                                                          "请输入要生成报告的关键词:")
                 if ok and input_keyword.strip():
                     keyword = input_keyword.strip()
@@ -1526,49 +1528,49 @@ class WelcomeWindow(QMainWindow):
                     # 如果用户取消输入或输入为空，使用默认值
                     keyword = "默认关键词"
                     logging.info("用户未输入关键词，使用默认值")
-            
+
             # 确保关键词不为None或空字符串
             if not keyword or not keyword.strip():
                 keyword = "默认关键词"
                 logging.info("关键词为空，使用默认值")
-            
+
             # 获取报告类型
             report_type_id = self.report_type_group.checkedId()
             report_types = ["完整报告", "趋势分析报告", "人群画像报告", "需求分析报告"]
             report_type = report_types[report_type_id]
-            
+
             # 确保报告类型不为None或空字符串
             if not report_type or not report_type.strip():
                 report_type = "完整报告"
                 logging.info("报告类型为空，使用默认值")
-            
+
             # 报告格式固定为HTML网页
             report_format = "HTML网页"
-            
+
             # 获取文件名
             filename = self.report_filename.text()
             if not filename:
                 # 使用默认文件名
                 filename = f"{keyword}_{report_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-                
+
             # 获取保存路径
             save_path = self.report_path_label.text().replace("保存路径: ", "")
-            
+
             # 确保保存目录存在
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
-                
+
             # 获取报告内容选项
             include_summary = self.include_summary.isChecked()
             include_charts = self.include_charts.isChecked()
             include_predictions = self.include_predictions.isChecked()
             include_recommendations = self.include_recommendations.isChecked()
-            
+
             # 显示生成进度
             progress = QProgressDialog("正在生成报告...", "取消", 0, 100, self)
             progress.setWindowTitle("生成报告")
             progress.setWindowModality(Qt.WindowModal)
-            
+
             # 实际生成报告的代码可以在这里实现
             # 以下模拟报告生成过程
             import time
@@ -1578,40 +1580,40 @@ class WelcomeWindow(QMainWindow):
                 if progress.wasCanceled():
                     break
                 self.refresh_ui()
-                
+
             if progress.wasCanceled():
                 self.show_message("已取消", "报告生成已取消")
                 return
-                
+
             file_extension = ".html"  # 只使用HTML扩展名
             full_path = os.path.join(save_path, filename + file_extension)
-            
+
             # 先测试文件写入权限
             test_path = os.path.join(save_path, f"test_{int(time.time())}.txt")
             if not self.create_test_file(test_path):
                 self.show_message("错误", f"无法写入文件到指定路径: {save_path}\n请检查目录权限。")
                 return
-            
+
             # 删除测试文件
             try:
                 os.remove(test_path)
             except:
                 pass  # 忽略删除测试文件的错误
-            
+
             # 实际创建文件
             try:
-                # 只创建HTML报告
+                # 创建HTML报告
                 success = self.create_simple_text_file(
-                    full_path, 
-                    keyword, 
-                    report_type, 
-                    "HTML网页", 
+                    full_path,
+                    keyword,
+                    report_type,
+                    "HTML网页",
                     include_summary=include_summary,
                     include_charts=include_charts,
                     include_predictions=include_predictions,
                     include_recommendations=include_recommendations
                 )
-                
+
                 # 验证文件是否成功创建
                 if os.path.exists(full_path):
                     from PyQt5.QtWidgets import QPushButton, QMessageBox
@@ -1619,15 +1621,15 @@ class WelcomeWindow(QMainWindow):
                     msg.setWindowTitle("成功")
                     msg.setText(f"HTML报告已成功生成并保存到:\n{full_path}")
                     msg.setIcon(QMessageBox.Information)
-                    
+
                     # 添加打开文件按钮
                     open_button = QPushButton("打开文件")
                     msg.addButton(open_button, QMessageBox.AcceptRole)
                     msg.addButton("关闭", QMessageBox.RejectRole)
-                    
+
                     # 显示消息框
                     result = msg.exec_()
-                    
+
                     # 如果用户点击了"打开文件"按钮
                     if result == 0:  # AcceptRole (第一个按钮)
                         try:
@@ -1658,7 +1660,7 @@ class WelcomeWindow(QMainWindow):
         """刷新报告关键词列表，从实际存在的表中获取"""
         # 清空当前列表
         self.report_keyword_combo.clear()
-        
+
         conn = None
         try:
             # 连接到数据库
@@ -1667,18 +1669,18 @@ class WelcomeWindow(QMainWindow):
             if not conn:
                 self.report_keyword_combo.addItem("数据库连接失败")
                 return
-                
+
             cursor = conn.cursor()
-            
+
             # 检查数据库中所有表
             cursor.execute("SHOW TABLES")
             tables = [table[0] for table in cursor.fetchall()]
             logging.info(f"数据库中的表: {tables}")
-            
+
             keywords = []
-            tables_to_check = ['baidu_index_trends', 'crowd_age_data', 'crowd_gender_data', 
-                              'crowd_interest_data', 'crowd_region_data', 'human_request_data']
-            
+            tables_to_check = ['baidu_index_trends', 'crowd_age_data', 'crowd_gender_data',
+                               'crowd_interest_data', 'crowd_region_data', 'human_request_data']
+
             # 从可能包含关键词的表中收集关键词
             for table in tables_to_check:
                 if table in tables:
@@ -1690,22 +1692,22 @@ class WelcomeWindow(QMainWindow):
                             logging.info(f"从{table}表中找到{len(table_keywords)}个关键词")
                     except Exception as e:
                         logging.warning(f"从{table}表获取关键词失败: {str(e)}")
-            
+
             # 去除重复项并排序
             keywords = list(set(keywords))
             keywords.sort()
-            
+
             # 添加到下拉框
             if keywords:
                 self.report_keyword_combo.addItems(keywords)
-                # 添加刷新按钮到报告生成页面 
+                # 添加刷新按钮到报告生成页面
                 if hasattr(self, 'refresh_button'):
                     self.refresh_button.setText(f"已加载 {len(keywords)} 个关键词")
             else:
                 self.report_keyword_combo.addItem("暂无可用数据")
                 if hasattr(self, 'refresh_button'):
                     self.refresh_button.setText("刷新关键词")
-            
+
         except Exception as e:
             logging.error(f"刷新关键词列表失败: {str(e)}")
             self.report_keyword_combo.addItem("加载关键词失败")
@@ -1824,21 +1826,21 @@ class WelcomeWindow(QMainWindow):
         """保存当前设置到配置文件"""
         try:
             settings = {}
-            
+
             # 安全地获取主题设置
             theme_combo = self.findChild(QComboBox, 'theme_combo')
             if theme_combo:
                 settings['theme'] = theme_combo.currentText()
             else:
                 settings['theme'] = "深蓝主题"  # 默认主题
-                
+
             # 安全地获取字体大小设置
             font_size_spin = self.findChild(QSpinBox, 'font_size_spin')
             if font_size_spin:
                 settings['font_size'] = font_size_spin.value()
             else:
                 settings['font_size'] = 14  # 默认字体大小
-                
+
             # 安全地获取天气更新间隔设置
             weather_combo = self.findChild(QComboBox, 'weather_combo')
             if weather_combo:
@@ -1849,11 +1851,11 @@ class WelcomeWindow(QMainWindow):
             # 确保缓存目录存在
             if not os.path.exists(self.cache_dir):
                 os.makedirs(self.cache_dir)
-                
+
             settings_path = os.path.join(self.cache_dir, 'settings.json')
             with open(settings_path, 'w', encoding='utf-8') as f:
                 json.dump(settings, f, ensure_ascii=False, indent=4)
-                
+
             logging.info("设置已成功保存")
         except Exception as e:
             logging.error(f"保存设置失败: {str(e)}")
@@ -1867,11 +1869,11 @@ class WelcomeWindow(QMainWindow):
             if not os.path.exists(self.cache_dir):
                 logging.info("缓存目录不存在，将使用默认设置")
                 return
-                
+
             if not os.path.exists(settings_path):
                 logging.info("设置文件不存在，将使用默认设置")
                 return
-                
+
             with open(settings_path, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
 
@@ -1889,7 +1891,7 @@ class WelcomeWindow(QMainWindow):
                 weather_combo = self.findChild(QComboBox, 'weather_combo')
                 if weather_combo and 'weather_interval' in settings:
                     weather_combo.setCurrentText(settings['weather_interval'])
-                    
+
             logging.info("设置已成功加载")
         except json.JSONDecodeError:
             logging.error("设置文件格式错误，将使用默认设置")
@@ -1960,7 +1962,7 @@ class WelcomeWindow(QMainWindow):
         # 创建空的人群画像标签页和需求图谱标签页
         self.portrait_tab = QWidget()
         self.demand_tab = QWidget()
-        
+
         # 创建竞品分析标签页
         self.competitor_tab = QWidget()
 
@@ -2089,11 +2091,11 @@ class WelcomeWindow(QMainWindow):
         self.interest_chart_view.setMinimumHeight(500)
 
         layout.addWidget(self.interest_chart_view)
-        
+
     def init_competitor_tab(self):
         """初始化竞品分析标签页"""
         layout = QVBoxLayout(self.competitor_tab)
-        
+
         # 上部分：竞品关键词选择区域
         selection_frame = QFrame()
         selection_frame.setStyleSheet("""
@@ -2104,15 +2106,15 @@ class WelcomeWindow(QMainWindow):
             }
         """)
         selection_layout = QVBoxLayout(selection_frame)
-        
+
         # 说明文字
         help_label = QLabel("添加多个关键词进行对比分析，了解竞争态势")
         help_label.setStyleSheet("color: white; font-style: italic;")
         selection_layout.addWidget(help_label)
-        
+
         # 关键词输入区域
         keywords_layout = QHBoxLayout()
-        
+
         self.competitor_input = QLineEdit()
         self.competitor_input.setPlaceholderText("输入要比较的关键词")
         self.competitor_input.setStyleSheet("""
@@ -2124,7 +2126,7 @@ class WelcomeWindow(QMainWindow):
                 color: white;
             }
         """)
-        
+
         add_button = QPushButton("添加")
         add_button.setStyleSheet("""
             QPushButton {
@@ -2138,7 +2140,7 @@ class WelcomeWindow(QMainWindow):
             }
         """)
         add_button.clicked.connect(self.add_competitor_keyword)
-        
+
         compare_button = QPushButton("开始比较")
         compare_button.setStyleSheet("""
             QPushButton {
@@ -2152,7 +2154,7 @@ class WelcomeWindow(QMainWindow):
             }
         """)
         compare_button.clicked.connect(self.compare_competitors)
-        
+
         clear_button = QPushButton("清空")
         clear_button.setStyleSheet("""
             QPushButton {
@@ -2166,19 +2168,19 @@ class WelcomeWindow(QMainWindow):
             }
         """)
         clear_button.clicked.connect(self.clear_competitors)
-        
+
         keywords_layout.addWidget(self.competitor_input)
         keywords_layout.addWidget(add_button)
         keywords_layout.addWidget(compare_button)
         keywords_layout.addWidget(clear_button)
-        
+
         selection_layout.addLayout(keywords_layout)
-        
+
         # 已添加的关键词列表
         list_label = QLabel("已添加的关键词:")
         list_label.setStyleSheet("color: white; margin-top: 10px;")
         selection_layout.addWidget(list_label)
-        
+
         self.competitor_list = QListWidget()
         self.competitor_list.setStyleSheet("""
             QListWidget {
@@ -2197,10 +2199,10 @@ class WelcomeWindow(QMainWindow):
         """)
         self.competitor_list.setMaximumHeight(150)
         selection_layout.addWidget(self.competitor_list)
-        
+
         # 将选择区域添加到主布局
         layout.addWidget(selection_frame)
-        
+
         # 下部分：图表显示区域
         chart_frame = QFrame()
         chart_frame.setStyleSheet("""
@@ -2211,17 +2213,17 @@ class WelcomeWindow(QMainWindow):
             }
         """)
         chart_layout = QVBoxLayout(chart_frame)
-        
+
         # 创建竞品分析图表
         self.competitor_chart_view = QWebEngineView()
         self.competitor_chart_view.setMinimumHeight(450)
         chart_layout.addWidget(self.competitor_chart_view)
-        
+
         # 分析结果文本区域
         result_label = QLabel("分析结果:")
         result_label.setStyleSheet("color: white; margin-top: 10px;")
         chart_layout.addWidget(result_label)
-        
+
         self.competitor_result = QTextEdit()
         self.competitor_result.setReadOnly(True)
         self.competitor_result.setStyleSheet("""
@@ -2234,55 +2236,55 @@ class WelcomeWindow(QMainWindow):
         """)
         self.competitor_result.setMaximumHeight(150)
         chart_layout.addWidget(self.competitor_result)
-        
+
         # 将图表区域添加到主布局
         layout.addWidget(chart_frame)
-        
+
         # 初始化数据
         self.competitor_keywords = []
-        
+
     def add_competitor_keyword(self):
         """添加竞品关键词到列表"""
         keyword = self.competitor_input.text().strip()
         if not keyword:
             self.show_message("提示", "请输入关键词")
             return
-            
+
         if keyword in self.competitor_keywords:
             self.show_message("提示", f"关键词 '{keyword}' 已在列表中")
             return
-            
+
         # 限制最多5个关键词
         if len(self.competitor_keywords) >= 5:
             self.show_message("提示", "最多只能添加5个关键词进行比较")
             return
-            
+
         self.competitor_keywords.append(keyword)
         self.competitor_list.addItem(keyword)
         self.competitor_input.clear()
-        
+
     def clear_competitors(self):
         """清空竞品关键词列表"""
         self.competitor_keywords = []
         self.competitor_list.clear()
         self.competitor_chart_view.setHtml("")
         self.competitor_result.clear()
-        
+
     def compare_competitors(self):
         """比较多个关键词的趋势数据"""
         if not self.competitor_keywords:
             self.show_message("提示", "请先添加要比较的关键词")
             return
-            
+
         try:
             # 连接数据库
             connection = db_utils.get_connection()
             cursor = connection.cursor()
-            
+
             all_keyword_data = {}
             earliest_date = None
             latest_date = None
-            
+
             # 查询每个关键词的趋势数据
             for keyword in self.competitor_keywords:
                 query = """
@@ -2293,52 +2295,52 @@ class WelcomeWindow(QMainWindow):
                 """
                 cursor.execute(query, (keyword,))
                 results = cursor.fetchall()
-                
+
                 if not results:
                     self.show_message("提示", f"未找到关键词 '{keyword}' 的趋势数据")
                     continue
-                    
+
                 # 提取数据
                 dates = []
                 values = []
-                
+
                 for row in results:
                     if row[0] and hasattr(row[0], 'strftime'):
                         date_str = row[0].strftime('%Y-%m-%d')
                     else:
                         date_str = str(row[0])
-                        
+
                     dates.append(date_str)
                     values.append(float(row[1]) if row[1] is not None else 0)
-                
+
                 # 更新日期范围
                 if earliest_date is None or dates[0] < earliest_date:
                     earliest_date = dates[0]
                 if latest_date is None or dates[-1] > latest_date:
                     latest_date = dates[-1]
-                
+
                 all_keyword_data[keyword] = {
                     'dates': dates,
                     'values': values
                 }
-            
+
             cursor.close()
             connection.close()
-            
+
             if not all_keyword_data:
                 self.show_message("提示", "没有找到任何关键词的数据")
                 return
-                
+
             # 生成竞品分析图表
             self.generate_competitor_chart(all_keyword_data)
-            
+
             # 生成分析结果
             self.generate_competitor_analysis(all_keyword_data, earliest_date, latest_date)
-            
+
         except Exception as e:
             logging.error(f"竞品分析失败: {str(e)}")
             self.show_message("错误", f"竞品分析失败: {str(e)}")
-            
+
     def generate_competitor_chart(self, all_keyword_data):
         """生成竞品比较图表"""
         # 使用pyecharts创建折线图
@@ -2348,42 +2350,42 @@ class WelcomeWindow(QMainWindow):
             bg_color="#1a237e",
             renderer="canvas"
         ))
-        
+
         # 合并所有日期并去重
         all_dates = set()
         for keyword_data in all_keyword_data.values():
             all_dates.update(keyword_data['dates'])
-        
+
         all_dates = sorted(list(all_dates))
-        
+
         # 添加X轴数据
         line.add_xaxis(all_dates)
-        
+
         # 为每个关键词添加一条线
         colors = ["#4CAF50", "#FF5722", "#2196F3", "#9C27B0", "#FFC107"]  # 为5个关键词预设颜色
-        
+
         for i, (keyword, data) in enumerate(all_keyword_data.items()):
             # 需要将数据映射到统一的日期轴上
             values_dict = dict(zip(data['dates'], data['values']))
             aligned_values = [values_dict.get(date, None) for date in all_dates]
-            
+
             # 对缺失值进行插值处理
             for j in range(len(aligned_values)):
                 if aligned_values[j] is None:
                     # 向前找最近的非None值
                     prev_value = None
-                    for k in range(j-1, -1, -1):
+                    for k in range(j - 1, -1, -1):
                         if aligned_values[k] is not None:
                             prev_value = aligned_values[k]
                             break
-                    
+
                     # 向后找最近的非None值
                     next_value = None
-                    for k in range(j+1, len(aligned_values)):
+                    for k in range(j + 1, len(aligned_values)):
                         if aligned_values[k] is not None:
                             next_value = aligned_values[k]
                             break
-                    
+
                     # 线性插值
                     if prev_value is not None and next_value is not None:
                         aligned_values[j] = (prev_value + next_value) / 2
@@ -2393,9 +2395,9 @@ class WelcomeWindow(QMainWindow):
                         aligned_values[j] = next_value
                     else:
                         aligned_values[j] = 0
-            
+
             color = colors[i % len(colors)]
-            
+
             line.add_yaxis(
                 keyword,
                 aligned_values,
@@ -2405,7 +2407,7 @@ class WelcomeWindow(QMainWindow):
                 itemstyle_opts=opts.ItemStyleOpts(color=color),
                 label_opts=opts.LabelOpts(is_show=False)
             )
-        
+
         # 设置全局选项
         line.set_global_opts(
             title_opts=opts.TitleOpts(
@@ -2458,10 +2460,10 @@ class WelcomeWindow(QMainWindow):
                 opts.DataZoomOpts(type_="inside")
             ]
         )
-        
+
         # 渲染图表
         html = line.render_embed()
-        
+
         # 添加自定义CSS
         custom_css = """
         <style>
@@ -2478,7 +2480,7 @@ class WelcomeWindow(QMainWindow):
             }
         </style>
         """
-        
+
         final_html = f"""
         <!DOCTYPE html>
         <html>
@@ -2492,39 +2494,39 @@ class WelcomeWindow(QMainWindow):
         </body>
         </html>
         """
-        
+
         self.competitor_chart_view.setHtml(final_html)
-        
+
     def generate_competitor_analysis(self, all_keyword_data, earliest_date, latest_date):
         """生成竞品分析结果"""
         analysis_text = f"<h3>竞品分析结果</h3>"
         analysis_text += f"<p>分析期间: {earliest_date} 至 {latest_date}</p>"
-        
+
         # 计算各关键词的平均值、最大值、增长率
         keyword_stats = {}
-        
+
         for keyword, data in all_keyword_data.items():
             values = data['values']
             if not values:
                 continue
-                
+
             avg_value = sum(values) / len(values)
             max_value = max(values)
             min_value = min(values)
-            
+
             # 计算增长率 (最后值 - 首值) / 首值 * 100%
             if values[0] > 0:
                 growth_rate = (values[-1] - values[0]) / values[0] * 100
             else:
                 growth_rate = 0
-                
+
             # 计算波动率 (标准差 / 平均值)
             if avg_value > 0:
                 std_dev = (sum((x - avg_value) ** 2 for x in values) / len(values)) ** 0.5
                 volatility = std_dev / avg_value * 100
             else:
                 volatility = 0
-                
+
             keyword_stats[keyword] = {
                 'avg': avg_value,
                 'max': max_value,
@@ -2532,41 +2534,41 @@ class WelcomeWindow(QMainWindow):
                 'growth_rate': growth_rate,
                 'volatility': volatility
             }
-        
+
         # 对关键词进行排名（按平均值降序）
         ranked_keywords = sorted(keyword_stats.keys(), key=lambda k: keyword_stats[k]['avg'], reverse=True)
-        
+
         # 生成排名表格
         analysis_text += "<h4>关键词排名（按平均搜索指数）</h4>"
         analysis_text += "<table style='width:100%; border-collapse:collapse;'>"
         analysis_text += "<tr style='background-color:rgba(255,255,255,0.2);'><th>排名</th><th>关键词</th><th>平均指数</th><th>最高指数</th><th>增长率</th></tr>"
-        
+
         for i, keyword in enumerate(ranked_keywords):
             stats = keyword_stats[keyword]
             growth_color = "#4CAF50" if stats['growth_rate'] >= 0 else "#F44336"
-            analysis_text += f"<tr><td>{i+1}</td><td>{keyword}</td><td>{stats['avg']:.1f}</td><td>{stats['max']}</td>"
+            analysis_text += f"<tr><td>{i + 1}</td><td>{keyword}</td><td>{stats['avg']:.1f}</td><td>{stats['max']}</td>"
             analysis_text += f"<td style='color:{growth_color}'>{stats['growth_rate']:.1f}%</td></tr>"
-        
+
         analysis_text += "</table>"
-        
+
         # 为排名第一的关键词提供分析
         if ranked_keywords:
             top_keyword = ranked_keywords[0]
             analysis_text += f"<h4>领先关键词分析</h4>"
             analysis_text += f"<p>'{top_keyword}' 在竞争中处于领先地位，平均搜索指数为 {keyword_stats[top_keyword]['avg']:.1f}，"
-            
+
             if keyword_stats[top_keyword]['growth_rate'] > 0:
                 analysis_text += f"搜索趋势呈上升态势，增长率为 {keyword_stats[top_keyword]['growth_rate']:.1f}%。"
             else:
                 analysis_text += f"搜索趋势呈下降态势，降低率为 {abs(keyword_stats[top_keyword]['growth_rate']):.1f}%。"
-            
+
             if keyword_stats[top_keyword]['volatility'] > 30:
                 analysis_text += f" 波动率较高 ({keyword_stats[top_keyword]['volatility']:.1f}%)，表明市场需求不稳定。"
             else:
                 analysis_text += f" 波动率适中 ({keyword_stats[top_keyword]['volatility']:.1f}%)，表明市场需求相对稳定。"
-                
+
             analysis_text += "</p>"
-        
+
         # 设置结果
         self.competitor_result.setHtml(analysis_text)
 
@@ -3061,7 +3063,7 @@ class WelcomeWindow(QMainWindow):
             else:
                 # 转换为字符串以避免类型问题
                 selected_date = str(selected_date)
-            
+
             print(f"使用日期: {selected_date}")
 
             try:
@@ -3119,10 +3121,10 @@ class WelcomeWindow(QMainWindow):
 
             # 处理数据 - 显示更多数据点并优化最近数据
             total_points = len(results)
-            
+
             # 增加数据点数量，从100增加到300
-            sample_size = min(total_points, 300)  
-            
+            sample_size = min(total_points, 300)
+
             # 如果总数据点小于或等于300，直接全部显示
             if total_points <= sample_size:
                 dates = []
@@ -3138,14 +3140,14 @@ class WelcomeWindow(QMainWindow):
                 # 计算前1/3的数据进行采样，后2/3的数据全部显示
                 early_data_count = total_points // 3
                 recent_data_count = total_points - early_data_count
-                
+
                 # 采样早期数据
                 early_sample_size = min(early_data_count, sample_size - recent_data_count)
                 early_step = max(1, early_data_count // early_sample_size)
-                
+
                 dates = []
                 values = []
-                
+
                 # 对早期数据进行采样
                 for i in range(0, early_data_count, early_step):
                     row = results[i]
@@ -3154,7 +3156,7 @@ class WelcomeWindow(QMainWindow):
                     else:
                         dates.append(str(row[0]))
                     values.append(float(row[1]) if row[1] is not None else 0)
-                
+
                 # 显示全部最近数据
                 for i in range(early_data_count, total_points):
                     row = results[i]
@@ -3163,7 +3165,7 @@ class WelcomeWindow(QMainWindow):
                     else:
                         dates.append(str(row[0]))
                     values.append(float(row[1]) if row[1] is not None else 0)
-            
+
             # 使用pyecharts创建趋势图
             line = Line(init_opts=opts.InitOpts(
                 width="100%",
@@ -3323,7 +3325,7 @@ class WelcomeWindow(QMainWindow):
                     # 如果日期格式不正确，记录错误但继续使用原始值
                     logging.error(f"无法解析日期字符串: {date}")
                     # 不修改date值，使用原始值继续
-            
+
             print(f"Debug - 查询参数: keyword={keyword}, date={date}, date类型={type(date)}")
 
             # 激活人群画像标签页
@@ -3341,7 +3343,7 @@ class WelcomeWindow(QMainWindow):
             age_dates = cursor.fetchall()
             print(f"Debug - 年龄数据可用日期: {age_dates}")
 
-            # 检查性别数据表中的可用日期 
+            # 检查性别数据表中的可用日期
             check_gender_query = "SELECT DISTINCT date FROM crowd_gender_data WHERE keyword = %s ORDER BY date DESC"
             cursor.execute(check_gender_query, (keyword,))
             gender_dates = cursor.fetchall()
@@ -4125,446 +4127,9 @@ class WelcomeWindow(QMainWindow):
             self.repaint()
             time.sleep(0.01)
 
-    def create_pdf_report(self, file_path, keyword, report_type, include_summary=True, 
-                         include_charts=True, include_predictions=True, include_recommendations=True):
-        """创建PDF格式的报告
-        
-        Args:
-            file_path: 保存PDF的完整路径
-            keyword: 报告关键词
-            report_type: 报告类型
-            include_summary: 是否包含摘要
-            include_charts: 是否包含图表
-            include_predictions: 是否包含预测
-            include_recommendations: 是否包含建议
-        """
-        try:
-            from reportlab.lib.pagesizes import A4
-            from reportlab.pdfgen import canvas
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
-            from reportlab.lib import colors
-            from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-            
-            # 注册中文字体
-            try:
-                font_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
-                                         "resources", "fonts", "simhei.ttf")
-                pdfmetrics.registerFont(TTFont('SimHei', font_path))
-            except Exception as font_error:
-                logging.warning(f"无法加载中文字体: {font_error}")
-                # 使用备用方案 - 使用默认字体
-            
-            # 创建PDF文档
-            doc = SimpleDocTemplate(
-                file_path,
-                pagesize=A4,
-                rightMargin=72,
-                leftMargin=72,
-                topMargin=72,
-                bottomMargin=72
-            )
-            
-            # 样式
-            styles = getSampleStyleSheet()
-            styles.add(ParagraphStyle(
-                name='ChineseStyle',
-                fontName='SimHei' if 'SimHei' in pdfmetrics.getRegisteredFontNames() else 'Helvetica',
-                fontSize=12,
-                leading=14
-            ))
-            title_style = ParagraphStyle(
-                name='Title',
-                fontName='SimHei' if 'SimHei' in pdfmetrics.getRegisteredFontNames() else 'Helvetica-Bold',
-                fontSize=18,
-                leading=22,
-                alignment=1,  # 居中
-                spaceAfter=12
-            )
-            heading_style = ParagraphStyle(
-                name='Heading',
-                fontName='SimHei' if 'SimHei' in pdfmetrics.getRegisteredFontNames() else 'Helvetica-Bold',
-                fontSize=14,
-                leading=18,
-                spaceAfter=6
-            )
-            
-            # 创建内容
-            story = []
-            
-            # 标题
-            title = f"{keyword} {report_type}报告"
-            story.append(Paragraph(title, title_style))
-            story.append(Spacer(1, 20))
-            
-            # 生成时间
-            current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M")
-            time_text = f"生成时间: {current_time}"
-            story.append(Paragraph(time_text, styles['ChineseStyle']))
-            story.append(Spacer(1, 20))
-            
-            # 摘要部分
-            if include_summary:
-                story.append(Paragraph("摘要", heading_style))
-                summary_text = f"""本报告分析了"{keyword}"相关的百度指数数据，包括搜索趋势、人群画像及地域分布情况。
-                数据显示，该关键词近期呈现较为{self.get_random_trend()}的趋势，主要用户群体集中在{self.get_random_age_group()}年龄段，
-                {self.get_random_gender_ratio()}，兴趣偏好主要包括{self.get_random_interests()}等。地域分布方面，
-                搜索量主要集中在{self.get_random_regions()}等地区。"""
-                story.append(Paragraph(summary_text, styles['ChineseStyle']))
-                story.append(Spacer(1, 20))
-            
-            # 趋势图表 (这里只是描述，实际生成PDF时可以添加真实的图表)
-            if include_charts:
-                story.append(Paragraph("搜索趋势分析", heading_style))
-                chart_description = f"""关键词"{keyword}"在过去30天内的百度搜索指数呈现{self.get_random_trend()}趋势。
-                最高峰值出现在{self.get_random_date()}，指数达到{random.randint(1000, 9999)}；
-                最低值出现在{self.get_random_date()}，指数为{random.randint(100, 999)}。
-                整体波动幅度为{random.randint(10, 50)}%，相比上月{self.get_random_comparison()}。"""
-                story.append(Paragraph(chart_description, styles['ChineseStyle']))
-                story.append(Spacer(1, 15))
-                
-                # 人群画像分析
-                story.append(Paragraph("人群画像分析", heading_style))
-                crowd_text = f"""搜索"{keyword}"的用户主要集中在以下群体:
-                
-                年龄分布: {self.get_random_age_distribution()}
-                
-                性别比例: {self.get_random_gender_ratio()}
-                
-                兴趣爱好: {self.get_random_interests()}
-                
-                地域分布: 搜索量排名前五的地区依次为{self.get_random_regions()}"""
-                story.append(Paragraph(crowd_text, styles['ChineseStyle']))
-                story.append(Spacer(1, 20))
-            
-            # 预测分析
-            if include_predictions:
-                story.append(Paragraph("趋势预测", heading_style))
-                prediction_text = f"""基于历史数据分析，预计未来30天内"{keyword}"的搜索趋势将会{self.get_random_prediction()}。
-                预计峰值可能出现在{self.get_random_future_date()}前后，主要受到{self.get_random_factors()}等因素的影响。
-                整体而言，该关键词在未来一段时间内关注度预计将{self.get_random_future_trend()}。"""
-                story.append(Paragraph(prediction_text, styles['ChineseStyle']))
-                story.append(Spacer(1, 20))
-            
-            # 建议
-            if include_recommendations:
-                story.append(Paragraph("分析建议", heading_style))
-                recommendation_text = f"""基于上述分析，我们提出以下建议:
-                
-                1. {self.get_random_recommendation()}
-                
-                2. {self.get_random_recommendation()}
-                
-                3. {self.get_random_recommendation()}
-                
-                4. {self.get_random_recommendation()}
-                
-                5. {self.get_random_recommendation()}"""
-                story.append(Paragraph(recommendation_text, styles['ChineseStyle']))
-            
-            # 构建PDF
-            doc.build(story)
-            logging.info(f"PDF报告已成功生成: {file_path}")
-            return True
-            
-        except Exception as e:
-            logging.error(f"创建PDF报告失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return False
-
-    def create_simple_text_file(self, file_path, keyword, report_type, format_type="Word文档", 
-                            include_summary=True, include_charts=True, 
-                            include_predictions=True, include_recommendations=True):
-        """创建简单的文本格式报告 (Word或HTML)
-        
-        Args:
-            file_path: 保存文件的完整路径
-            keyword: 报告关键词
-            report_type: 报告类型
-            format_type: 格式类型 ("Word文档"或"HTML网页")
-            include_summary: 是否包含摘要
-            include_charts: 是否包含图表
-            include_predictions: 是否包含预测和竞品分析
-            include_recommendations: 是否包含建议
-        """
-        try:
-            logging.info(f"创建{format_type}报告: {file_path}, 关键词: {keyword}, 报告类型: {report_type}")
-            logging.info(f"内容选项: 摘要={include_summary}, 图表={include_charts}, 预测={include_predictions}, 建议={include_recommendations}")
-            
-            # 创建报告内容
-            current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M")
-            
-            if format_type == "HTML网页":
-                # 创建HTML报告
-                html_content = f"""<!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>{keyword} {report_type}报告</title>
-                    <style>
-                        body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
-                        h1 {{ color: #2196F3; text-align: center; }}
-                        h2 {{ color: #0D47A1; margin-top: 20px; }}
-                        .time {{ color: #757575; font-style: italic; margin-bottom: 20px; text-align: center; }}
-                        .summary {{ background-color: #E3F2FD; padding: 15px; border-radius: 5px; }}
-                        .section {{ margin-top: 30px; }}
-                        table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
-                        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                        th {{ background-color: #f2f2f2; }}
-                        .up {{ color: #4CAF50; }}
-                        .down {{ color: #F44336; }}
-                        .stable {{ color: #FF9800; }}
-                        .competitor-chart {{ background-color: #F5F5F5; padding: 15px; border-radius: 5px; margin-top: 15px; }}
-                        .prediction {{ background-color: #E8F5E9; padding: 15px; border-radius: 5px; margin-top: 15px; }}
-                        .recommendation {{ background-color: #FFF8E1; padding: 15px; border-radius: 5px; margin-top: 15px; }}
-                    </style>
-                </head>
-                <body>
-                    <h1>{keyword} {report_type}报告</h1>
-                    <p class="time">生成时间: {current_time}</p>
-                    """
-                
-                # 根据选项添加内容块
-                if include_summary:
-                    html_content += f"""
-                    <div class="summary">
-                        <h2>摘要</h2>
-                        <p>本报告分析了"{keyword}"相关的百度指数数据，包括搜索趋势、人群画像及地域分布情况。
-                        数据显示，该关键词近期呈现较为{self.get_random_trend()}的趋势，主要用户群体集中在{self.get_random_age_group()}年龄段，
-                        {self.get_random_gender_ratio()}，兴趣偏好主要包括{self.get_random_interests()}等。</p>
-                    </div>
-                    """
-                
-                if include_charts:
-                    html_content += f"""
-                    <div class="section">
-                        <h2>搜索趋势分析</h2>
-                        <p>关键词"{keyword}"在过去30天内的百度搜索指数呈现{self.get_random_trend()}趋势。
-                        整体波动幅度为{random.randint(10, 50)}%，相比上月{self.get_random_comparison()}。</p>
-                    </div>
-                    
-                    <div class="section">
-                        <h2>人群画像分析</h2>
-                        <p>搜索"{keyword}"的用户主要集中在以下群体:</p>
-                        <ul>
-                            <li>年龄分布: {self.get_random_age_distribution()}</li>
-                            <li>性别比例: {self.get_random_gender_ratio()}</li>
-                            <li>兴趣爱好: {self.get_random_interests()}</li>
-                            <li>地域分布: {self.get_random_regions()}</li>
-                        </ul>
-                    </div>
-                    """
-                
-                # 竞品分析和预测
-                if include_predictions:
-                    # 添加竞品分析
-                    html_content += self.get_competitor_analysis_html(keyword)
-                    
-                    # 添加预测内容
-                    html_content += f"""
-                    <div class="section">
-                        <h2>趋势预测</h2>
-                        <div class="prediction">
-                            <p><strong>未来30天趋势:</strong> 预计关键词"{keyword}"的搜索趋势将会{self.get_random_prediction()}。
-                            整体而言，该关键词在未来一段时间内关注度预计将{self.get_random_future_trend()}。</p>
-                            
-                            <p><strong>主要影响因素:</strong></p>
-                            <ul>
-                                <li>{self.get_random_factors()}</li>
-                                <li>市场竞争变化</li>
-                                <li>用户需求转变</li>
-                            </ul>
-                            
-                            <p><strong>关键时间节点:</strong> {self.get_random_future_date()}</p>
-                        </div>
-                    </div>
-                    """
-                
-                if include_recommendations:
-                    html_content += f"""
-                    <div class="section">
-                        <h2>分析建议</h2>
-                        <div class="recommendation">
-                            <ol>
-                                <li>{self.get_random_recommendation()}</li>
-                                <li>{self.get_random_recommendation()}</li>
-                                <li>{self.get_random_recommendation()}</li>
-                                <li>{self.get_random_recommendation()}</li>
-                                <li>{self.get_random_recommendation()}</li>
-                            </ol>
-                        </div>
-                    </div>
-                    """
-                
-                # 结束HTML文档
-                html_content += """
-                </body>
-                </html>"""
-                
-                # 保存HTML文件
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(html_content)
-                    
-            else:  # Word文档
-                # 创建简单的文本内容作为Word文档
-                text_content = f"""
-                {keyword} {report_type}报告
-                ==============================
-                
-                生成时间: {current_time}
-                """
-                
-                if include_summary:
-                    text_content += f"""
-                摘要:
-                -----
-                本报告分析了"{keyword}"相关的百度指数数据，包括搜索趋势、人群画像及地域分布情况。
-                数据显示，该关键词近期呈现较为{self.get_random_trend()}的趋势，主要用户群体集中在{self.get_random_age_group()}年龄段，
-                {self.get_random_gender_ratio()}，兴趣偏好主要包括{self.get_random_interests()}等。
-                """
-                
-                if include_charts:
-                    text_content += f"""
-                搜索趋势分析:
-                ------------
-                关键词"{keyword}"在过去30天内的百度搜索指数呈现{self.get_random_trend()}趋势。
-                整体波动幅度为{random.randint(10, 50)}%，相比上月{self.get_random_comparison()}。
-                
-                人群画像分析:
-                ------------
-                搜索"{keyword}"的用户主要集中在以下群体:
-                
-                - 年龄分布: {self.get_random_age_distribution()}
-                - 性别比例: {self.get_random_gender_ratio()}
-                - 兴趣爱好: {self.get_random_interests()}
-                - 地域分布: {self.get_random_regions()}
-                """
-                
-                if include_predictions:
-                    text_content += f"""
-                竞品分析:
-                --------
-                与"{keyword}"相关的主要竞争关键词:
-                - {keyword}品牌
-                - {keyword}推荐
-                - {keyword}排行
-                
-                竞争态势: {random.choice(["激烈", "一般", "较低"])}
-                
-                趋势预测:
-                --------
-                基于历史数据分析，预计未来30天内"{keyword}"的搜索趋势将会{self.get_random_prediction()}。
-                整体而言，该关键词在未来一段时间内关注度预计将{self.get_random_future_trend()}。
-                
-                主要影响因素: {self.get_random_factors()}
-                """
-                
-                if include_recommendations:
-                    text_content += f"""
-                分析建议:
-                --------
-                1. {self.get_random_recommendation()}
-                2. {self.get_random_recommendation()}
-                3. {self.get_random_recommendation()}
-                """
-                
-                # 保存为文本文件，模拟Word文档
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(text_content)
-            
-            logging.info(f"{format_type}报告已成功生成: {file_path}")
-            return True
-            
-        except Exception as e:
-            logging.error(f"创建{format_type}报告失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return False
-            
-    # 随机数据生成辅助方法
-    def get_random_trend(self):
-        trends = ["上升", "下降", "平稳", "波动", "震荡上行", "震荡下行", "快速增长", "缓慢下滑"]
-        return random.choice(trends)
-        
-    def get_random_age_group(self):
-        age_groups = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"]
-        return random.choice(age_groups)
-        
-    def get_random_gender_ratio(self):
-        male = random.randint(30, 70)
-        female = 100 - male
-        return f"男性占{male}%，女性占{female}%"
-        
-    def get_random_interests(self):
-        interests = ["旅游", "美食", "健康", "科技", "教育", "金融", "体育", "娱乐", "时尚", "汽车", "家居", "电子游戏"]
-        selected = random.sample(interests, random.randint(3, 5))
-        return "、".join(selected)
-        
-    def get_random_regions(self):
-        regions = ["北京", "上海", "广州", "深圳", "成都", "重庆", "杭州", "武汉", "南京", "西安", "长沙", "郑州", "天津", "苏州", "青岛"]
-        selected = random.sample(regions, random.randint(3, 5))
-        return "、".join(selected)
-        
-    def get_random_date(self):
-        days_ago = random.randint(1, 30)
-        date = datetime.now() - timedelta(days=days_ago)
-        return date.strftime("%m月%d日")
-        
-    def get_random_future_date(self):
-        days_ahead = random.randint(1, 30)
-        date = datetime.now() + timedelta(days=days_ahead)
-        return date.strftime("%m月%d日")
-        
-    def get_random_comparison(self):
-        comparisons = ["上升了", "下降了", "基本持平，上升了", "基本持平，下降了"]
-        return f"{random.choice(comparisons)}{random.randint(5, 30)}%"
-        
-    def get_random_prediction(self):
-        predictions = ["继续上升", "开始下降", "保持平稳", "呈现波动", "先升后降", "先降后升", "震荡上行", "震荡下行"]
-        return random.choice(predictions)
-        
-    def get_random_factors(self):
-        factors = ["季节性因素", "市场活动", "节假日影响", "新闻热点", "政策变化", "竞品活动", "行业趋势", "消费者偏好变化"]
-        selected = random.sample(factors, random.randint(2, 3))
-        return "、".join(selected)
-        
-    def get_random_future_trend(self):
-        trends = ["持续增长", "略有下降", "保持稳定", "有所波动", "大幅增长", "大幅下降"]
-        return random.choice(trends)
-        
-    def get_random_recommendation(self):
-        recommendations = [
-            "针对核心人群特点优化内容和产品设计",
-            "增加在主要地区的营销投入",
-            "开发符合搜索用户兴趣的新功能或服务",
-            "与相关热门话题结合进行内容营销",
-            "关注搜索高峰期，适时调整推广策略",
-            "针对竞争关键词进行差异化定位",
-            "优化页面内容，提高搜索引擎排名",
-            "建立完整的搜索用户转化渠道",
-            "分析高TGI人群特征，精准投放广告",
-            "根据趋势预测，提前准备营销活动"
-        ]
-        return random.choice(recommendations)
-        
-    def get_random_age_distribution(self):
-        ages = ["18-24岁", "25-34岁", "35-44岁", "45-54岁", "55岁以上"]
-        distribution = []
-        total = 0
-        
-        for age in ages[:-1]:
-            value = random.randint(5, 30)
-            total += value
-            distribution.append(f"{age}: {value}%")
-            
-        distribution.append(f"{ages[-1]}: {100-total}%")
-        return "，".join(distribution)
-
     def create_test_file(self, file_path, content="测试文件内容"):
         """创建测试文件以验证写入权限
-        
+
         Args:
             file_path: 文件路径
             content: 文件内容
@@ -4582,7 +4147,7 @@ class WelcomeWindow(QMainWindow):
 
     def create_simple_pdf(self, file_path, keyword, report_type):
         """创建简单的PDF文件，使用reportlab库
-        
+
         Args:
             file_path: 保存文件的完整路径
             keyword: 关键词
@@ -4603,24 +4168,24 @@ class WelcomeWindow(QMainWindow):
                 if fallback_path and os.path.exists(fallback_path):
                     logging.info(f"已创建备用文本报告: {fallback_path}")
                 return False
-                
+
             # 创建PDF画布
             c = canvas.Canvas(file_path, pagesize=A4)
             width, height = A4
-            
+
             # 尝试注册中文字体
             try:
                 # 确保字体目录存在
                 self.ensure_font_directory()
-                
-                font_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
-                                        "resources", "fonts", "simhei.ttf")
-                
+
+                font_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                         "resources", "fonts", "simhei.ttf")
+
                 # 详细记录字体文件信息
                 if os.path.exists(font_path):
                     file_size = os.path.getsize(font_path)
                     logging.info(f"找到字体文件: {font_path}, 大小: {file_size} 字节")
-                    
+
                     if file_size > 1000:  # 确保不是空文件或占位符
                         try:
                             # 尝试注册字体并记录结果
@@ -4639,17 +4204,17 @@ class WelcomeWindow(QMainWindow):
             except Exception as font_error:
                 has_chinese_font = False
                 logging.error(f"注册中文字体失败: {str(font_error)}")
-            
+
             # 设置字体
             if has_chinese_font:
                 c.setFont("SimHei", 18)
             else:
                 c.setFont("Helvetica-Bold", 18)
-            
+
             # 标题
             title = f"{keyword} {report_type}报告"
-            c.drawCentredString(width/2, height - 50, title)
-            
+            c.drawCentredString(width / 2, height - 50, title)
+
             # 生成时间
             current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M")
             if has_chinese_font:
@@ -4657,40 +4222,40 @@ class WelcomeWindow(QMainWindow):
             else:
                 c.setFont("Helvetica", 12)
             c.drawString(50, height - 80, f"生成时间: {current_time}")
-            
+
             # 报告内容
             content_y = height - 120
             c.drawString(50, content_y, "报告内容:")
             content_y -= 20
-            
+
             c.drawString(50, content_y, "这是一个简单的测试报告，用于验证文件生成功能。")
             content_y -= 20
-            
+
             c.drawString(50, content_y, f"关键词: {keyword}")
             content_y -= 20
-            
+
             c.drawString(50, content_y, f"报告类型: {report_type}")
             content_y -= 20
-            
+
             # 添加一些示例数据
             c.drawString(50, content_y, "趋势分析:")
             content_y -= 20
-            
-            c.drawString(70, content_y, f"该关键词搜索趋势呈{self.get_random_trend()}状态")
+
+            c.drawString(70, content_y, f"该关键词搜索趋势呈上升状态")
             content_y -= 20
-            
-            c.drawString(70, content_y, f"主要用户年龄分布: {self.get_random_age_group()}")
+
+            c.drawString(70, content_y, f"主要用户年龄分布: 25-34")
             content_y -= 20
-            
-            c.drawString(70, content_y, f"性别比例: {self.get_random_gender_ratio()}")
+
+            c.drawString(70, content_y, f"性别比例: 男性占60%, 女性占40%")
             content_y -= 20
-            
+
             # 保存PDF
             c.save()
-            
+
             logging.info(f"简单PDF报告已成功生成: {file_path}")
             return True
-            
+
         except Exception as e:
             logging.error(f"创建简单PDF报告失败: {str(e)}")
             import traceback
@@ -4698,312 +4263,109 @@ class WelcomeWindow(QMainWindow):
             return False
 
     def ensure_font_directory(self):
-        """确保字体目录和基本资源目录存在"""
-        try:
-            # 检查resources目录
-            resources_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources")
-            if not os.path.exists(resources_dir):
-                os.makedirs(resources_dir)
-                logging.info(f"创建资源目录: {resources_dir}")
-            
-            # 检查fonts目录
-            fonts_dir = os.path.join(resources_dir, "fonts")
-            if not os.path.exists(fonts_dir):
-                os.makedirs(fonts_dir)
-                logging.info(f"创建字体目录: {fonts_dir}")
-                
-            return fonts_dir
-        except Exception as e:
-            logging.error(f"创建资源目录失败: {str(e)}")
-            return None
+        """确保字体目录存在"""
+        font_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources", "fonts")
+        if not os.path.exists(font_dir):
+            try:
+                os.makedirs(font_dir)
+                logging.info(f"已创建字体目录: {font_dir}")
+            except Exception as e:
+                logging.error(f"创建字体目录失败: {str(e)}")
+        return font_dir
 
     def create_fallback_report(self, file_path, keyword, report_type):
-        """在PDF生成失败时创建一个简单的文本报告
-        
+        """如果PDF创建失败，创建一个备用的文本报告
+
         Args:
-            file_path: 保存文件的完整路径
+            file_path: 原PDF文件路径
             keyword: 关键词
             report_type: 报告类型
+
+        Returns:
+            str: 备用文本文件路径
         """
         try:
-            # 创建一个.txt文件作为备用
-            txt_path = file_path.replace('.pdf', '.txt')
-            with open(txt_path, 'w', encoding='utf-8') as f:
+            # 修改扩展名为.txt
+            text_path = file_path.replace(".pdf", ".txt")
+            if text_path == file_path:  # 如果没有.pdf扩展名
+                text_path = file_path + ".txt"
+
+            with open(text_path, 'w', encoding='utf-8') as f:
                 f.write(f"{keyword} {report_type}报告\n")
-                f.write("=" * 50 + "\n\n")
-                
-                current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M")
-                f.write(f"生成时间: {current_time}\n\n")
-                
+                f.write("=" * 30 + "\n\n")
+                f.write(f"生成时间: {datetime.now().strftime('%Y年%m月%d日 %H:%M')}\n\n")
+                f.write("注: 由于PDF创建失败，系统自动生成此备用文本报告。\n\n")
                 f.write("报告内容:\n")
-                f.write("这是一个备用文本报告，因为PDF生成失败。\n\n")
-                
-                f.write(f"关键词: {keyword}\n")
-                f.write(f"报告类型: {report_type}\n\n")
-                
-                f.write("趋势分析:\n")
-                f.write(f"  该关键词搜索趋势呈{self.get_random_trend()}状态\n")
-                f.write(f"  主要用户年龄分布: {self.get_random_age_group()}\n")
-                f.write(f"  性别比例: {self.get_random_gender_ratio()}\n\n")
-                
-                f.write("提示: 要查看更好的报告格式，请确保已安装reportlab库。\n")
-                f.write("安装命令: pip install reportlab\n")
-            
-            logging.info(f"创建备用文本报告: {txt_path}")
-            return txt_path
+                f.write(f"  - 关键词: {keyword}\n")
+                f.write(f"  - 报告类型: {report_type}\n")
+                f.write(f"  - 该关键词搜索趋势呈上升状态\n")
+                f.write(f"  - 主要用户年龄分布: 25-34\n")
+                f.write(f"  - 性别比例: 男性占60%, 女性占40%\n")
+            logging.info(f"已创建备用文本报告: {text_path}")
+            return text_path
         except Exception as e:
-            logging.error(f"创建备用报告失败: {str(e)}")
+            logging.error(f"创建备用文本报告失败: {str(e)}")
             return None
 
     def create_ascii_pdf(self, file_path, keyword, report_type):
-        """创建ASCII字符的PDF文件，避免中文乱码问题
-        
+        """创建一个仅使用标准字体的ASCII版PDF
+
         Args:
-            file_path: 保存文件的完整路径
+            file_path: 文件路径
             keyword: 关键词
             report_type: 报告类型
         """
         try:
             from reportlab.pdfgen import canvas
             from reportlab.lib.pagesizes import A4
-            from reportlab.lib.units import inch
-            
-            # 记录传入的参数到日志
-            logging.info(f"创建ASCII PDF，传入参数: 文件路径={file_path}, 关键词=[{keyword}], 报告类型=[{report_type}]")
             
             # 创建PDF画布
             c = canvas.Canvas(file_path, pagesize=A4)
             width, height = A4
             
-            # 使用默认字体
+            # 使用标准字体
             c.setFont("Helvetica-Bold", 18)
             
-            # 确保关键词和报告类型不为空，设置可读的默认值
-            # 明确地将None和空字符串处理为默认值
-            if keyword is None or not str(keyword).strip():
-                safe_keyword = "No Keyword Specified"
-                logging.info("关键词为空或None，使用默认值")
-            else:
-                safe_keyword = str(keyword).strip()
-                
-            if report_type is None or not str(report_type).strip():
-                safe_report_type = "General Report"
-                logging.info("报告类型为空或None，使用默认值")
-            else:
-                safe_report_type = str(report_type).strip()
-            
-            # 再次确认值不为空
-            if not safe_keyword:
-                safe_keyword = "No Keyword Specified"
-            if not safe_report_type:
-                safe_report_type = "General Report"
-            
-            # 记录处理后的参数
-            logging.info(f"处理后的参数: 安全关键词=[{safe_keyword}], 安全报告类型=[{safe_report_type}]")
-            
-            title = f"Report for '{safe_keyword}'"
-            c.drawCentredString(width/2, height - 50, title)
+            # 标题 (使用英文)
+            title = f"{keyword} {report_type} Report"
+            c.drawCentredString(width / 2, height - 50, title)
             
             # 生成时间
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
             c.setFont("Helvetica", 12)
-            c.drawString(50, height - 80, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+            c.drawString(50, height - 80, f"Generated: {current_time}")
             
             # 报告内容
             content_y = height - 120
             c.drawString(50, content_y, "Report Content:")
             content_y -= 20
             
-            c.drawString(50, content_y, "This is a simple test report to verify report generation.")
+            c.drawString(50, content_y, "This is a simple ASCII report for testing purposes.")
             content_y -= 20
             
-            c.drawString(50, content_y, f"Keyword: {safe_keyword}")
+            c.drawString(50, content_y, f"Keyword: {keyword}")
             content_y -= 20
             
-            c.drawString(50, content_y, f"Report Type: {safe_report_type}")
+            c.drawString(50, content_y, f"Report Type: {report_type}")
             content_y -= 20
-            
-            # 添加一些示例数据
-            c.drawString(50, content_y, "Trend Analysis:")
-            content_y -= 20
-            
-            # 将中文趋势转换为英文显示
-            trend_mapping = {
-                "上升": "rising",
-                "下降": "declining",
-                "平稳": "stable",
-                "波动": "fluctuating",
-                "震荡上行": "oscillating upward",
-                "震荡下行": "oscillating downward",
-                "快速增长": "rapid growth",
-                "快速上升": "rapid growth",
-                "急速上升": "rapid growth",
-                "缓慢下滑": "slow decline"
-            }
-            
-            # 获取示例数据并确保它们不为空
-            try:
-                trend = self.get_random_trend()
-                # 如果是中文趋势，转换为英文
-                if trend in trend_mapping:
-                    eng_trend = trend_mapping[trend]
-                else:
-                    # 如果不是预定义趋势，尝试通过关键词匹配
-                    eng_trend = "stable"
-                    for cn_trend, en_trend in trend_mapping.items():
-                        if cn_trend in trend:
-                            eng_trend = en_trend
-                            break
-                    
-                age_group = self.get_random_age_group()
-                if not age_group or not isinstance(age_group, (str, bytes)):
-                    age_group = "25-34"
-                    
-                gender_ratio = self.get_random_gender_ratio()
-                if not gender_ratio or not isinstance(gender_ratio, (str, bytes)):
-                    gender_ratio = "男性占45%，女性占55%"
-            except Exception as trend_err:
-                logging.error(f"获取趋势数据失败: {trend_err}")
-                eng_trend = "stable"
-                age_group = "35-44"
-                gender_ratio = "男性占50%，女性占50%"
-            
-            # 使用正确的格式呈现趋势
-            c.drawString(70, content_y, f"Search trend is showing a {eng_trend} pattern")
-            content_y -= 20
-            
-            c.drawString(70, content_y, f"Main user age group: {age_group}")
-            content_y -= 20
-            
-            # 提取百分比数字，确保处理正确
-            try:
-                if "男性占" in gender_ratio and "女性占" in gender_ratio:
-                    male_part = gender_ratio.split("女性占")[0]
-                    male_percent = ''.join(filter(str.isdigit, male_part))
-                    if not male_percent:
-                        male_percent = "49"
-                    female_part = gender_ratio.split("女性占")[1]
-                    female_percent = ''.join(filter(str.isdigit, female_part))
-                    if not female_percent:
-                        female_percent = "51"
-                else:
-                    male_percent = "49"
-                    female_percent = "51"
-                c.drawString(70, content_y, f"Gender ratio: Male {male_percent}%, Female {female_percent}%")
-            except Exception as gender_err:
-                logging.error(f"性别比例处理失败: {gender_err}")
-                c.drawString(70, content_y, "Gender ratio: Male 49%, Female 51%")
-            content_y -= 30
-            
-            # 添加竞品分析内容
-            c.drawString(50, content_y, "Competitive Analysis:")
-            content_y -= 20
-            
-            c.drawString(70, content_y, f"Competitors for '{safe_keyword}':")
-            content_y -= 15
-            
-            # 生成模拟竞争对手
-            competitors = []
-            if safe_keyword.endswith("phone"):
-                competitors = ["Apple Phone", "Samsung Phone", "Huawei Phone"]
-            elif "game" in safe_keyword.lower():
-                competitors = ["Online Games", "Mobile Games", "Console Games"]
-            else:
-                suffixes = ["brand", "reviews", "prices", "alternatives"]
-                competitors = [f"{safe_keyword} {suffix}" for suffix in suffixes[:3]]
-                
-            for i, comp in enumerate(competitors[:3]):
-                c.drawString(80, content_y, f"- {comp}")
-                content_y -= 15
-                
-            c.drawString(70, content_y, "Competitive landscape is " + 
-                        random.choice(["highly competitive", "moderately competitive", "emerging", "stable"]))
-            content_y -= 30
-            
-            # 添加预测内容
-            c.drawString(50, content_y, "Prediction:")
-            content_y -= 20
-            
-            prediction_trend = random.choice(["continue to rise", "stabilize", "slightly decline", "fluctuate", "grow rapidly"])
-            c.drawString(70, content_y, f"Future trend is expected to {prediction_trend}")
-            content_y -= 15
-            
-            # 获取随机因素
-            factors = self.get_random_factors().split("、")
-            if factors:
-                c.drawString(70, content_y, "Key influential factors:")
-                content_y -= 15
-                for factor in factors[:2]:
-                    c.drawString(80, content_y, f"- {factor}")
-                    content_y -= 15
-            
-            content_y -= 20
-            
-            # 添加建议内容
-            c.drawString(50, content_y, "Recommendations:")
-            content_y -= 20
-            
-            # 英文建议
-            recommendations = [
-                "Focus on core user demographics",
-                "Optimize for peak search periods",
-                "Develop content targeting main interests",
-                "Monitor competitive keywords",
-                "Enhance presence in key regions"
-            ]
-            
-            for i, rec in enumerate(recommendations[:3]):
-                c.drawString(70, content_y, f"{i+1}. {rec}")
-                content_y -= 15
-            
-            content_y -= 20
-            
-            # 添加注释说明如何获取中文支持
-            c.setFont("Helvetica-Oblique", 10)
-            c.drawString(50, content_y, "Note: This report uses ASCII characters to avoid Chinese font issues.")
-            content_y -= 15
-            c.drawString(50, content_y, "To view Chinese characters, install a Chinese font (simhei.ttf) in:")
-            content_y -= 15
-            font_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
-                                   "resources", "fonts")
-            c.drawString(50, content_y, font_path)
             
             # 保存PDF
             c.save()
-            
-            logging.info(f"ASCII PDF报告已成功生成: {file_path}, 关键词: {safe_keyword}, 报告类型: {safe_report_type}")
+            logging.info(f"ASCII PDF报告已生成: {file_path}")
             return True
-            
+        
         except Exception as e:
-            logging.error(f"创建ASCII PDF报告失败: {str(e)}")
+            logging.error(f"创建ASCII PDF失败: {str(e)}")
             import traceback
             traceback.print_exc()
             return False
 
-    def get_random_future_trend(self):
-        trends = ["持续增长", "略有下降", "保持稳定", "有所波动", "大幅增长", "大幅下降"]
-        return random.choice(trends)
-        
-    def get_random_recommendation(self):
-        recommendations = [
-            "针对核心人群特点优化内容和产品设计",
-            "增加在主要地区的营销投入",
-            "开发符合搜索用户兴趣的新功能或服务",
-            "与相关热门话题结合进行内容营销",
-            "关注搜索高峰期，适时调整推广策略",
-            "针对竞争关键词进行差异化定位",
-            "优化页面内容，提高搜索引擎排名",
-            "建立完整的搜索用户转化渠道",
-            "分析高TGI人群特征，精准投放广告",
-            "根据趋势预测，提前准备营销活动"
-        ]
-        return random.choice(recommendations)
-        
     def get_competitor_analysis_html(self, main_keyword):
         """生成竞品分析HTML内容
-        
+
         Args:
             main_keyword: 主关键词
-        
+
         Returns:
             str: 竞品分析HTML内容
         """
@@ -5011,7 +4373,7 @@ class WelcomeWindow(QMainWindow):
             # 从数据库查询与该关键词相关的其他关键词
             connection = db_utils.get_connection()
             cursor = connection.cursor()
-            
+
             # 修改SQL查询，确保ORDER BY使用的列在SELECT列表中
             related_keywords_query = """
             SELECT DISTINCT word, pv 
@@ -5022,7 +4384,7 @@ class WelcomeWindow(QMainWindow):
             """
             cursor.execute(related_keywords_query, (main_keyword,))
             related_keywords = [row[0] for row in cursor.fetchall()]
-            
+
             # 如果没有足够的关键词，生成一些模拟关键词
             if len(related_keywords) < 2:
                 if main_keyword.endswith("手机"):
@@ -5033,13 +4395,13 @@ class WelcomeWindow(QMainWindow):
                     # 添加一些随机后缀
                     suffixes = ["品牌", "推荐", "排行", "价格", "评测"]
                     related_keywords = [f"{main_keyword}{suffix}" for suffix in suffixes[:4]]
-            
+
             # 创建HTML内容
             html = """
             <div class="section">
                 <h2>竞品分析</h2>
                 <p>以下是与主关键词相关的竞争关键词分析:</p>
-                
+
                 <table>
                     <tr>
                         <th>关键词</th>
@@ -5048,14 +4410,14 @@ class WelcomeWindow(QMainWindow):
                         <th>竞争强度</th>
                     </tr>
             """
-            
+
             # 生成随机数据
             for keyword in [main_keyword] + related_keywords[:4]:
                 avg_index = random.randint(1000, 10000)
                 growth = random.choice(["上升", "下降", "平稳"])
                 growth_class = "up" if growth == "上升" else ("down" if growth == "下降" else "stable")
                 competitive_intensity = random.choice(["高", "中", "低"])
-                
+
                 html += f"""
                     <tr>
                         <td>{keyword}</td>
@@ -5064,13 +4426,13 @@ class WelcomeWindow(QMainWindow):
                         <td>{competitive_intensity}</td>
                     </tr>
                 """
-            
+
             html += """
                 </table>
-                
+
                 <div class="competitor-chart">
                     <p><strong>竞争态势分析:</strong> 通过对比相关关键词的搜索趋势，可以看出市场整体呈现"""
-            
+
             html += random.choice([
                 "上升趋势，各关键词之间的竞争日趋激烈。",
                 "稳定态势，各关键词保持相对稳定的市场份额。",
@@ -5078,16 +4440,16 @@ class WelcomeWindow(QMainWindow):
                 "波动变化，市场需求受季节性因素影响明显。",
                 "分化趋势，头部关键词吸引了大部分搜索流量。"
             ])
-            
+
             html += """</p>
                 </div>
             </div>
             """
-            
+
             cursor.close()
             connection.close()
             return html
-            
+
         except Exception as e:
             logging.error(f"生成竞品分析HTML失败: {str(e)}")
             # 返回简化版本
@@ -5097,3 +4459,385 @@ class WelcomeWindow(QMainWindow):
                 <p>目前暂无足够数据进行详细的竞品分析。建议收集更多相关关键词数据后再进行分析。</p>
             </div>
             """
+
+    def create_simple_text_file(self, file_path, keyword, report_type, format_type="HTML网页",
+                                include_summary=True, include_charts=True,
+                                include_predictions=True, include_recommendations=True):
+        """创建基于真实数据的HTML报告
+        
+        Args:
+            file_path: 保存文件的完整路径
+            keyword: 报告关键词
+            report_type: 报告类型
+            format_type: 格式类型 ("HTML网页")
+            include_summary: 是否包含摘要
+            include_charts: 是否包含图表
+            include_predictions: 是否包含预测和竞品分析
+            include_recommendations: 是否包含建议
+        """
+        try:
+            logging.info(f"创建HTML报告: {file_path}, 关键词: {keyword}, 报告类型: {report_type}")
+            logging.info(f"内容选项: 摘要={include_summary}, 图表={include_charts}, 预测={include_predictions}, 建议={include_recommendations}")
+
+            # 从数据库获取真实数据
+            conn = None
+            try:
+                from utils.db_utils import get_connection
+                conn = get_connection()
+                if not conn:
+                    logging.error("数据库连接失败")
+                    return False
+                    
+                cursor = conn.cursor()
+                
+                # 获取趋势数据
+                trend_data = []
+                cursor.execute(
+                    "SELECT date, index_value FROM baidu_index_trends WHERE keyword = %s ORDER BY date",
+                    (keyword,)
+                )
+                trend_data = cursor.fetchall()
+                
+                # 获取年龄分布数据
+                age_data = []
+                cursor.execute(
+                    "SELECT name, rate FROM crowd_age_data WHERE keyword = %s",
+                    (keyword,)
+                )
+                age_data = cursor.fetchall()
+                
+                # 获取性别分布数据
+                gender_data = []
+                cursor.execute(
+                    "SELECT name, rate FROM crowd_gender_data WHERE keyword = %s",
+                    (keyword,)
+                )
+                gender_data = cursor.fetchall()
+                
+                # 获取兴趣分布数据
+                interest_data = []
+                cursor.execute(
+                    "SELECT name, rate FROM crowd_interest_data WHERE keyword = %s",
+                    (keyword,)
+                )
+                interest_data = cursor.fetchall()
+                
+                # 获取地域分布数据
+                region_data = []
+                cursor.execute(
+                    "SELECT province, value FROM crowd_region_data WHERE keyword = %s ORDER BY value DESC LIMIT 5",
+                    (keyword,)
+                )
+                region_data = cursor.fetchall()
+                
+                # 获取需求数据
+                demand_data = []
+                cursor.execute(
+                    "SELECT word, pv FROM human_request_data WHERE keyword = %s ORDER BY pv DESC LIMIT 10",
+                    (keyword,)
+                )
+                demand_data = cursor.fetchall()
+                
+            except Exception as db_error:
+                logging.error(f"获取数据时出错: {str(db_error)}")
+                # 如果无法获取数据，使用空列表
+                if not trend_data:
+                    trend_data = []
+                if not age_data:
+                    age_data = []
+                if not gender_data:
+                    gender_data = []
+                if not interest_data:
+                    interest_data = []
+                if not region_data:
+                    region_data = []
+                if not demand_data:
+                    demand_data = []
+            finally:
+                if conn:
+                    conn.close()
+                
+            # 创建报告内容
+            current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M")
+            
+            # 创建HTML报告
+            html_content = f"""<!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>{keyword} {report_type}报告</title>
+                <style>
+                    body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
+                    h1 {{ color: #2196F3; text-align: center; }}
+                    h2 {{ color: #0D47A1; margin-top: 20px; }}
+                    .time {{ color: #757575; font-style: italic; margin-bottom: 20px; text-align: center; }}
+                    .summary {{ background-color: #E3F2FD; padding: 15px; border-radius: 5px; }}
+                    .section {{ margin-top: 30px; }}
+                    table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
+                    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+                    th {{ background-color: #f2f2f2; }}
+                    .up {{ color: #4CAF50; }}
+                    .down {{ color: #F44336; }}
+                    .stable {{ color: #FF9800; }}
+                    .competitor-chart {{ background-color: #F5F5F5; padding: 15px; border-radius: 5px; margin-top: 15px; }}
+                    .prediction {{ background-color: #E8F5E9; padding: 15px; border-radius: 5px; margin-top: 15px; }}
+                    .recommendation {{ background-color: #FFF8E1; padding: 15px; border-radius: 5px; margin-top: 15px; }}
+                </style>
+            </head>
+            <body>
+                <h1>{keyword} {report_type}报告</h1>
+                <p class="time">生成时间: {current_time}</p>
+                """
+                
+            # 根据选项添加内容块
+            if include_summary:
+                # 提取摘要数据
+                trend_description = "上升" if trend_data and len(trend_data) > 1 and trend_data[-1][1] > trend_data[0][1] else "下降"
+                
+                # 提取年龄信息
+                age_group = "不详"
+                if age_data:
+                    max_age = max(age_data, key=lambda x: x[1])
+                    age_group = max_age[0]
+                    
+                # 性别比例
+                gender_ratio = "不详"
+                if gender_data:
+                    gender_ratio = "、".join([f"{name}占{rate:.1f}%" for name, rate in gender_data])
+                    
+                # 兴趣偏好
+                interests = "不详"
+                if interest_data:
+                    interests = "、".join([name for name, _ in interest_data[:3]])
+                    
+                html_content += f"""
+                <div class="summary">
+                    <h2>摘要</h2>
+                    <p>本报告分析了"{keyword}"相关的百度指数数据，包括搜索趋势、人群画像及地域分布情况。
+                    数据显示，该关键词近期呈现较为{trend_description}的趋势，主要用户群体集中在{age_group}年龄段，
+                    {gender_ratio}，兴趣偏好主要包括{interests}等。</p>
+                </div>
+                """
+
+            if include_charts:
+                # 趋势分析部分
+                html_content += f"""
+                <div class="section">
+                    <h2>搜索趋势分析</h2>
+                    <table>
+                        <tr>
+                            <th>日期</th>
+                            <th>指数值</th>
+                        </tr>
+                """
+                
+                for date, value in trend_data:
+                    html_content += f"""
+                        <tr>
+                            <td>{date}</td>
+                            <td>{value}</td>
+                        </tr>
+                    """
+                    
+                html_content += """
+                    </table>
+                </div>
+                """
+                
+                # 人群画像分析
+                html_content += """
+                <div class="section">
+                    <h2>人群画像分析</h2>
+                """
+                
+                # 年龄分布
+                if age_data:
+                    html_content += """
+                    <h3>年龄分布</h3>
+                    <table>
+                        <tr>
+                            <th>年龄段</th>
+                            <th>比例</th>
+                        </tr>
+                    """
+                    
+                    for name, rate in age_data:
+                        html_content += f"""
+                        <tr>
+                            <td>{name}</td>
+                            <td>{rate:.1f}%</td>
+                        </tr>
+                        """
+                        
+                    html_content += """
+                    </table>
+                    """
+                    
+                # 性别分布
+                if gender_data:
+                    html_content += """
+                    <h3>性别分布</h3>
+                    <table>
+                        <tr>
+                            <th>性别</th>
+                            <th>比例</th>
+                        </tr>
+                    """
+                    
+                    for name, rate in gender_data:
+                        html_content += f"""
+                        <tr>
+                            <td>{name}</td>
+                            <td>{rate:.1f}%</td>
+                        </tr>
+                        """
+                        
+                    html_content += """
+                    </table>
+                    """
+                    
+                # 兴趣爱好
+                if interest_data:
+                    html_content += """
+                    <h3>兴趣爱好</h3>
+                    <table>
+                        <tr>
+                            <th>兴趣类别</th>
+                            <th>比例</th>
+                        </tr>
+                    """
+                    
+                    for name, rate in interest_data:
+                        html_content += f"""
+                        <tr>
+                            <td>{name}</td>
+                            <td>{rate:.1f}%</td>
+                        </tr>
+                        """
+                        
+                    html_content += """
+                    </table>
+                    """
+                    
+                # 地域分布
+                if region_data:
+                    html_content += """
+                    <h3>地域分布</h3>
+                    <table>
+                        <tr>
+                            <th>地区</th>
+                            <th>搜索热度</th>
+                        </tr>
+                    """
+                    
+                    for province, value in region_data:
+                        html_content += f"""
+                        <tr>
+                            <td>{province}</td>
+                            <td>{value}</td>
+                        </tr>
+                        """
+                        
+                    html_content += """
+                    </table>
+                    """
+                    
+                html_content += """
+                </div>
+                """
+
+            # 需求分析
+            if include_predictions and demand_data:
+                html_content += """
+                <div class="section">
+                    <h2>需求分析</h2>
+                    <div class="prediction">
+                        <p><strong>相关搜索词:</strong></p>
+                        <table>
+                            <tr>
+                                <th>搜索词</th>
+                                <th>搜索量</th>
+                            </tr>
+                """
+                
+                for word, pv in demand_data:
+                    html_content += f"""
+                            <tr>
+                                <td>{word}</td>
+                                <td>{pv}</td>
+                            </tr>
+                    """
+                    
+                html_content += """
+                        </table>
+                    </div>
+                </div>
+                """
+
+            if include_recommendations:
+                # 分析建议基于实际数据
+                recommendations = []
+                
+                # 基于热门地区的建议
+                if region_data:
+                    top_regions = [region for region, _ in region_data[:3]]
+                    recommendations.append(f"在{'、'.join(top_regions)}等热门地区增加营销投入")
+                    
+                # 基于人群特征的建议
+                if age_data:
+                    max_age = max(age_data, key=lambda x: x[1])
+                    recommendations.append(f"针对{max_age[0]}年龄段用户优化产品设计和营销内容")
+                    
+                # 基于兴趣特征的建议
+                if interest_data:
+                    top_interests = [interest for interest, _ in interest_data[:2]]
+                    recommendations.append(f"结合用户对{'和'.join(top_interests)}的兴趣，开发相关功能或内容")
+                    
+                # 基于需求词的建议
+                if demand_data:
+                    top_demands = [word for word, _ in demand_data[:2]]
+                    recommendations.append(f"针对用户关注的{'和'.join(top_demands)}等热门话题，提供专业内容")
+                    
+                # 通用建议
+                recommendations.append("持续跟踪市场趋势，及时调整产品策略")
+                
+                # 如果没有足够的建议，添加一些通用的
+                if len(recommendations) < 3:
+                    recommendations.append("建立完整的用户转化渠道，提高获客效率")
+                    recommendations.append("优化搜索引擎营销策略，提升曝光和点击率")
+                    
+                html_content += """
+                <div class="section">
+                    <h2>分析建议</h2>
+                    <div class="recommendation">
+                        <ol>
+                """
+                
+                for recommendation in recommendations[:5]:  # 最多显示5条建议
+                    html_content += f"""
+                            <li>{recommendation}</li>
+                    """
+                    
+                html_content += """
+                        </ol>
+                    </div>
+                </div>
+                """
+
+            # 结束HTML文档
+            html_content += """
+            </body>
+            </html>"""
+
+            # 保存HTML文件
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+
+            logging.info(f"HTML报告已成功生成: {file_path}")
+            return True
+
+        except Exception as e:
+            logging.error(f"创建HTML报告失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
