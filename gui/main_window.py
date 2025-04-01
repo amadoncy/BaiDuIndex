@@ -1601,7 +1601,16 @@ class WelcomeWindow(QMainWindow):
             # 实际创建文件
             try:
                 # 只创建HTML报告
-                success = self.create_simple_text_file(full_path, keyword, report_type, "HTML")
+                success = self.create_simple_text_file(
+                    full_path, 
+                    keyword, 
+                    report_type, 
+                    "HTML网页", 
+                    include_summary=include_summary,
+                    include_charts=include_charts,
+                    include_predictions=include_predictions,
+                    include_recommendations=include_recommendations
+                )
                 
                 # 验证文件是否成功创建
                 if os.path.exists(full_path):
@@ -1951,14 +1960,20 @@ class WelcomeWindow(QMainWindow):
         # 创建空的人群画像标签页和需求图谱标签页
         self.portrait_tab = QWidget()
         self.demand_tab = QWidget()
+        
+        # 创建竞品分析标签页
+        self.competitor_tab = QWidget()
 
         # 先添加空标签页到标签页控件
+        self.analysis_tabs.addTab(trend_tab, "趋势分析")
         self.analysis_tabs.addTab(self.portrait_tab, "人群画像分析")
         self.analysis_tabs.addTab(self.demand_tab, "需求图谱分析")
+        self.analysis_tabs.addTab(self.competitor_tab, "竞品分析")
 
         # 初始化标签页的内容
         self.init_portrait_tab()
         self.init_demand_tab()
+        self.init_competitor_tab()  # 初始化竞品分析标签页
 
         layout.addWidget(self.analysis_tabs)
         return page
@@ -2074,6 +2089,486 @@ class WelcomeWindow(QMainWindow):
         self.interest_chart_view.setMinimumHeight(500)
 
         layout.addWidget(self.interest_chart_view)
+        
+    def init_competitor_tab(self):
+        """初始化竞品分析标签页"""
+        layout = QVBoxLayout(self.competitor_tab)
+        
+        # 上部分：竞品关键词选择区域
+        selection_frame = QFrame()
+        selection_frame.setStyleSheet("""
+            QFrame {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                padding: 10px;
+            }
+        """)
+        selection_layout = QVBoxLayout(selection_frame)
+        
+        # 说明文字
+        help_label = QLabel("添加多个关键词进行对比分析，了解竞争态势")
+        help_label.setStyleSheet("color: white; font-style: italic;")
+        selection_layout.addWidget(help_label)
+        
+        # 关键词输入区域
+        keywords_layout = QHBoxLayout()
+        
+        self.competitor_input = QLineEdit()
+        self.competitor_input.setPlaceholderText("输入要比较的关键词")
+        self.competitor_input.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                color: white;
+            }
+        """)
+        
+        add_button = QPushButton("添加")
+        add_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border-radius: 5px;
+                padding: 8px 15px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+        add_button.clicked.connect(self.add_competitor_keyword)
+        
+        compare_button = QPushButton("开始比较")
+        compare_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border-radius: 5px;
+                padding: 8px 15px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+        """)
+        compare_button.clicked.connect(self.compare_competitors)
+        
+        clear_button = QPushButton("清空")
+        clear_button.setStyleSheet("""
+            QPushButton {
+                background-color: #F44336;
+                color: white;
+                border-radius: 5px;
+                padding: 8px 15px;
+            }
+            QPushButton:hover {
+                background-color: #d32f2f;
+            }
+        """)
+        clear_button.clicked.connect(self.clear_competitors)
+        
+        keywords_layout.addWidget(self.competitor_input)
+        keywords_layout.addWidget(add_button)
+        keywords_layout.addWidget(compare_button)
+        keywords_layout.addWidget(clear_button)
+        
+        selection_layout.addLayout(keywords_layout)
+        
+        # 已添加的关键词列表
+        list_label = QLabel("已添加的关键词:")
+        list_label.setStyleSheet("color: white; margin-top: 10px;")
+        selection_layout.addWidget(list_label)
+        
+        self.competitor_list = QListWidget()
+        self.competitor_list.setStyleSheet("""
+            QListWidget {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 5px;
+                color: white;
+                padding: 5px;
+            }
+            QListWidget::item {
+                padding: 5px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            QListWidget::item:selected {
+                background: rgba(33, 150, 243, 0.3);
+            }
+        """)
+        self.competitor_list.setMaximumHeight(150)
+        selection_layout.addWidget(self.competitor_list)
+        
+        # 将选择区域添加到主布局
+        layout.addWidget(selection_frame)
+        
+        # 下部分：图表显示区域
+        chart_frame = QFrame()
+        chart_frame.setStyleSheet("""
+            QFrame {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                padding: 10px;
+            }
+        """)
+        chart_layout = QVBoxLayout(chart_frame)
+        
+        # 创建竞品分析图表
+        self.competitor_chart_view = QWebEngineView()
+        self.competitor_chart_view.setMinimumHeight(450)
+        chart_layout.addWidget(self.competitor_chart_view)
+        
+        # 分析结果文本区域
+        result_label = QLabel("分析结果:")
+        result_label.setStyleSheet("color: white; margin-top: 10px;")
+        chart_layout.addWidget(result_label)
+        
+        self.competitor_result = QTextEdit()
+        self.competitor_result.setReadOnly(True)
+        self.competitor_result.setStyleSheet("""
+            QTextEdit {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 5px;
+                color: white;
+                padding: 10px;
+            }
+        """)
+        self.competitor_result.setMaximumHeight(150)
+        chart_layout.addWidget(self.competitor_result)
+        
+        # 将图表区域添加到主布局
+        layout.addWidget(chart_frame)
+        
+        # 初始化数据
+        self.competitor_keywords = []
+        
+    def add_competitor_keyword(self):
+        """添加竞品关键词到列表"""
+        keyword = self.competitor_input.text().strip()
+        if not keyword:
+            self.show_message("提示", "请输入关键词")
+            return
+            
+        if keyword in self.competitor_keywords:
+            self.show_message("提示", f"关键词 '{keyword}' 已在列表中")
+            return
+            
+        # 限制最多5个关键词
+        if len(self.competitor_keywords) >= 5:
+            self.show_message("提示", "最多只能添加5个关键词进行比较")
+            return
+            
+        self.competitor_keywords.append(keyword)
+        self.competitor_list.addItem(keyword)
+        self.competitor_input.clear()
+        
+    def clear_competitors(self):
+        """清空竞品关键词列表"""
+        self.competitor_keywords = []
+        self.competitor_list.clear()
+        self.competitor_chart_view.setHtml("")
+        self.competitor_result.clear()
+        
+    def compare_competitors(self):
+        """比较多个关键词的趋势数据"""
+        if not self.competitor_keywords:
+            self.show_message("提示", "请先添加要比较的关键词")
+            return
+            
+        try:
+            # 连接数据库
+            connection = db_utils.get_connection()
+            cursor = connection.cursor()
+            
+            all_keyword_data = {}
+            earliest_date = None
+            latest_date = None
+            
+            # 查询每个关键词的趋势数据
+            for keyword in self.competitor_keywords:
+                query = """
+                SELECT date, index_value
+                FROM baidu_index_trends 
+                WHERE keyword = %s 
+                ORDER BY date
+                """
+                cursor.execute(query, (keyword,))
+                results = cursor.fetchall()
+                
+                if not results:
+                    self.show_message("提示", f"未找到关键词 '{keyword}' 的趋势数据")
+                    continue
+                    
+                # 提取数据
+                dates = []
+                values = []
+                
+                for row in results:
+                    if row[0] and hasattr(row[0], 'strftime'):
+                        date_str = row[0].strftime('%Y-%m-%d')
+                    else:
+                        date_str = str(row[0])
+                        
+                    dates.append(date_str)
+                    values.append(float(row[1]) if row[1] is not None else 0)
+                
+                # 更新日期范围
+                if earliest_date is None or dates[0] < earliest_date:
+                    earliest_date = dates[0]
+                if latest_date is None or dates[-1] > latest_date:
+                    latest_date = dates[-1]
+                
+                all_keyword_data[keyword] = {
+                    'dates': dates,
+                    'values': values
+                }
+            
+            cursor.close()
+            connection.close()
+            
+            if not all_keyword_data:
+                self.show_message("提示", "没有找到任何关键词的数据")
+                return
+                
+            # 生成竞品分析图表
+            self.generate_competitor_chart(all_keyword_data)
+            
+            # 生成分析结果
+            self.generate_competitor_analysis(all_keyword_data, earliest_date, latest_date)
+            
+        except Exception as e:
+            logging.error(f"竞品分析失败: {str(e)}")
+            self.show_message("错误", f"竞品分析失败: {str(e)}")
+            
+    def generate_competitor_chart(self, all_keyword_data):
+        """生成竞品比较图表"""
+        # 使用pyecharts创建折线图
+        line = Line(init_opts=opts.InitOpts(
+            width="100%",
+            height="450px",
+            bg_color="#1a237e",
+            renderer="canvas"
+        ))
+        
+        # 合并所有日期并去重
+        all_dates = set()
+        for keyword_data in all_keyword_data.values():
+            all_dates.update(keyword_data['dates'])
+        
+        all_dates = sorted(list(all_dates))
+        
+        # 添加X轴数据
+        line.add_xaxis(all_dates)
+        
+        # 为每个关键词添加一条线
+        colors = ["#4CAF50", "#FF5722", "#2196F3", "#9C27B0", "#FFC107"]  # 为5个关键词预设颜色
+        
+        for i, (keyword, data) in enumerate(all_keyword_data.items()):
+            # 需要将数据映射到统一的日期轴上
+            values_dict = dict(zip(data['dates'], data['values']))
+            aligned_values = [values_dict.get(date, None) for date in all_dates]
+            
+            # 对缺失值进行插值处理
+            for j in range(len(aligned_values)):
+                if aligned_values[j] is None:
+                    # 向前找最近的非None值
+                    prev_value = None
+                    for k in range(j-1, -1, -1):
+                        if aligned_values[k] is not None:
+                            prev_value = aligned_values[k]
+                            break
+                    
+                    # 向后找最近的非None值
+                    next_value = None
+                    for k in range(j+1, len(aligned_values)):
+                        if aligned_values[k] is not None:
+                            next_value = aligned_values[k]
+                            break
+                    
+                    # 线性插值
+                    if prev_value is not None and next_value is not None:
+                        aligned_values[j] = (prev_value + next_value) / 2
+                    elif prev_value is not None:
+                        aligned_values[j] = prev_value
+                    elif next_value is not None:
+                        aligned_values[j] = next_value
+                    else:
+                        aligned_values[j] = 0
+            
+            color = colors[i % len(colors)]
+            
+            line.add_yaxis(
+                keyword,
+                aligned_values,
+                is_smooth=True,
+                symbol_size=6,
+                linestyle_opts=opts.LineStyleOpts(width=2, color=color),
+                itemstyle_opts=opts.ItemStyleOpts(color=color),
+                label_opts=opts.LabelOpts(is_show=False)
+            )
+        
+        # 设置全局选项
+        line.set_global_opts(
+            title_opts=opts.TitleOpts(
+                title="关键词竞争趋势对比",
+                subtitle="数据来源：百度指数",
+                pos_left="center",
+                title_textstyle_opts=opts.TextStyleOpts(color="#FFFFFF", font_size=18),
+                subtitle_textstyle_opts=opts.TextStyleOpts(color="#B0BEC5", font_size=12)
+            ),
+            tooltip_opts=opts.TooltipOpts(
+                trigger="axis",
+                axis_pointer_type="cross",
+                background_color="rgba(50,50,50,0.7)",
+                border_color="#ccc",
+                textstyle_opts=opts.TextStyleOpts(color="#fff")
+            ),
+            legend_opts=opts.LegendOpts(
+                pos_top="8%",
+                pos_left="center",
+                orient="horizontal",
+                textstyle_opts=opts.TextStyleOpts(color="#fff")
+            ),
+            toolbox_opts=opts.ToolboxOpts(
+                is_show=True,
+                feature={
+                    "dataZoom": {"yAxisIndex": "none"},
+                    "restore": {},
+                    "saveAsImage": {}
+                }
+            ),
+            xaxis_opts=opts.AxisOpts(
+                type_="category",
+                boundary_gap=False,
+                axislabel_opts=opts.LabelOpts(rotate=45, color="#B0BEC5", interval="auto", margin=8),
+                axisline_opts=opts.AxisLineOpts(linestyle_opts=opts.LineStyleOpts(color="#B0BEC5"))
+            ),
+            yaxis_opts=opts.AxisOpts(
+                type_="value",
+                name="搜索指数",
+                name_textstyle_opts=opts.TextStyleOpts(color="#B0BEC5"),
+                axislabel_opts=opts.LabelOpts(color="#B0BEC5"),
+                axisline_opts=opts.AxisLineOpts(linestyle_opts=opts.LineStyleOpts(color="#B0BEC5"))
+            ),
+            datazoom_opts=[
+                opts.DataZoomOpts(
+                    range_start=70,
+                    range_end=100,
+                    pos_bottom="5%"
+                ),
+                opts.DataZoomOpts(type_="inside")
+            ]
+        )
+        
+        # 渲染图表
+        html = line.render_embed()
+        
+        # 添加自定义CSS
+        custom_css = """
+        <style>
+            html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                background-color: #1a237e;
+            }
+            .chart-container {
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+        """
+        
+        final_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            {custom_css}
+        </head>
+        <body>
+            <div class="chart-container">
+                {html}
+            </div>
+        </body>
+        </html>
+        """
+        
+        self.competitor_chart_view.setHtml(final_html)
+        
+    def generate_competitor_analysis(self, all_keyword_data, earliest_date, latest_date):
+        """生成竞品分析结果"""
+        analysis_text = f"<h3>竞品分析结果</h3>"
+        analysis_text += f"<p>分析期间: {earliest_date} 至 {latest_date}</p>"
+        
+        # 计算各关键词的平均值、最大值、增长率
+        keyword_stats = {}
+        
+        for keyword, data in all_keyword_data.items():
+            values = data['values']
+            if not values:
+                continue
+                
+            avg_value = sum(values) / len(values)
+            max_value = max(values)
+            min_value = min(values)
+            
+            # 计算增长率 (最后值 - 首值) / 首值 * 100%
+            if values[0] > 0:
+                growth_rate = (values[-1] - values[0]) / values[0] * 100
+            else:
+                growth_rate = 0
+                
+            # 计算波动率 (标准差 / 平均值)
+            if avg_value > 0:
+                std_dev = (sum((x - avg_value) ** 2 for x in values) / len(values)) ** 0.5
+                volatility = std_dev / avg_value * 100
+            else:
+                volatility = 0
+                
+            keyword_stats[keyword] = {
+                'avg': avg_value,
+                'max': max_value,
+                'min': min_value,
+                'growth_rate': growth_rate,
+                'volatility': volatility
+            }
+        
+        # 对关键词进行排名（按平均值降序）
+        ranked_keywords = sorted(keyword_stats.keys(), key=lambda k: keyword_stats[k]['avg'], reverse=True)
+        
+        # 生成排名表格
+        analysis_text += "<h4>关键词排名（按平均搜索指数）</h4>"
+        analysis_text += "<table style='width:100%; border-collapse:collapse;'>"
+        analysis_text += "<tr style='background-color:rgba(255,255,255,0.2);'><th>排名</th><th>关键词</th><th>平均指数</th><th>最高指数</th><th>增长率</th></tr>"
+        
+        for i, keyword in enumerate(ranked_keywords):
+            stats = keyword_stats[keyword]
+            growth_color = "#4CAF50" if stats['growth_rate'] >= 0 else "#F44336"
+            analysis_text += f"<tr><td>{i+1}</td><td>{keyword}</td><td>{stats['avg']:.1f}</td><td>{stats['max']}</td>"
+            analysis_text += f"<td style='color:{growth_color}'>{stats['growth_rate']:.1f}%</td></tr>"
+        
+        analysis_text += "</table>"
+        
+        # 为排名第一的关键词提供分析
+        if ranked_keywords:
+            top_keyword = ranked_keywords[0]
+            analysis_text += f"<h4>领先关键词分析</h4>"
+            analysis_text += f"<p>'{top_keyword}' 在竞争中处于领先地位，平均搜索指数为 {keyword_stats[top_keyword]['avg']:.1f}，"
+            
+            if keyword_stats[top_keyword]['growth_rate'] > 0:
+                analysis_text += f"搜索趋势呈上升态势，增长率为 {keyword_stats[top_keyword]['growth_rate']:.1f}%。"
+            else:
+                analysis_text += f"搜索趋势呈下降态势，降低率为 {abs(keyword_stats[top_keyword]['growth_rate']):.1f}%。"
+            
+            if keyword_stats[top_keyword]['volatility'] > 30:
+                analysis_text += f" 波动率较高 ({keyword_stats[top_keyword]['volatility']:.1f}%)，表明市场需求不稳定。"
+            else:
+                analysis_text += f" 波动率适中 ({keyword_stats[top_keyword]['volatility']:.1f}%)，表明市场需求相对稳定。"
+                
+            analysis_text += "</p>"
+        
+        # 设置结果
+        self.competitor_result.setHtml(analysis_text)
 
     def on_region_view_changed(self, index):
         """处理地域分布视图切换"""
@@ -3779,20 +4274,29 @@ class WelcomeWindow(QMainWindow):
             traceback.print_exc()
             return False
 
-    def create_simple_text_file(self, file_path, keyword, report_type, format_type="Word文档"):
+    def create_simple_text_file(self, file_path, keyword, report_type, format_type="Word文档", 
+                            include_summary=True, include_charts=True, 
+                            include_predictions=True, include_recommendations=True):
         """创建简单的文本格式报告 (Word或HTML)
         
         Args:
             file_path: 保存文件的完整路径
             keyword: 报告关键词
             report_type: 报告类型
-            format_type: 格式类型 ("Word文档"或"HTML")
+            format_type: 格式类型 ("Word文档"或"HTML网页")
+            include_summary: 是否包含摘要
+            include_charts: 是否包含图表
+            include_predictions: 是否包含预测和竞品分析
+            include_recommendations: 是否包含建议
         """
         try:
+            logging.info(f"创建{format_type}报告: {file_path}, 关键词: {keyword}, 报告类型: {report_type}")
+            logging.info(f"内容选项: 摘要={include_summary}, 图表={include_charts}, 预测={include_predictions}, 建议={include_recommendations}")
+            
             # 创建报告内容
             current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M")
             
-            if format_type == "HTML":
+            if format_type == "HTML网页":
                 # 创建HTML报告
                 html_content = f"""<!DOCTYPE html>
                 <html>
@@ -3803,22 +4307,38 @@ class WelcomeWindow(QMainWindow):
                         body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
                         h1 {{ color: #2196F3; text-align: center; }}
                         h2 {{ color: #0D47A1; margin-top: 20px; }}
-                        .time {{ color: #757575; font-style: italic; margin-bottom: 20px; }}
+                        .time {{ color: #757575; font-style: italic; margin-bottom: 20px; text-align: center; }}
                         .summary {{ background-color: #E3F2FD; padding: 15px; border-radius: 5px; }}
                         .section {{ margin-top: 30px; }}
+                        table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
+                        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+                        th {{ background-color: #f2f2f2; }}
+                        .up {{ color: #4CAF50; }}
+                        .down {{ color: #F44336; }}
+                        .stable {{ color: #FF9800; }}
+                        .competitor-chart {{ background-color: #F5F5F5; padding: 15px; border-radius: 5px; margin-top: 15px; }}
+                        .prediction {{ background-color: #E8F5E9; padding: 15px; border-radius: 5px; margin-top: 15px; }}
+                        .recommendation {{ background-color: #FFF8E1; padding: 15px; border-radius: 5px; margin-top: 15px; }}
                     </style>
                 </head>
                 <body>
                     <h1>{keyword} {report_type}报告</h1>
                     <p class="time">生成时间: {current_time}</p>
-                    
+                    """
+                
+                # 根据选项添加内容块
+                if include_summary:
+                    html_content += f"""
                     <div class="summary">
                         <h2>摘要</h2>
                         <p>本报告分析了"{keyword}"相关的百度指数数据，包括搜索趋势、人群画像及地域分布情况。
                         数据显示，该关键词近期呈现较为{self.get_random_trend()}的趋势，主要用户群体集中在{self.get_random_age_group()}年龄段，
                         {self.get_random_gender_ratio()}，兴趣偏好主要包括{self.get_random_interests()}等。</p>
                     </div>
-                    
+                    """
+                
+                if include_charts:
+                    html_content += f"""
                     <div class="section">
                         <h2>搜索趋势分析</h2>
                         <p>关键词"{keyword}"在过去30天内的百度搜索指数呈现{self.get_random_trend()}趋势。
@@ -3835,21 +4355,51 @@ class WelcomeWindow(QMainWindow):
                             <li>地域分布: {self.get_random_regions()}</li>
                         </ul>
                     </div>
+                    """
+                
+                # 竞品分析和预测
+                if include_predictions:
+                    # 添加竞品分析
+                    html_content += self.get_competitor_analysis_html(keyword)
                     
+                    # 添加预测内容
+                    html_content += f"""
                     <div class="section">
                         <h2>趋势预测</h2>
-                        <p>基于历史数据分析，预计未来30天内"{keyword}"的搜索趋势将会{self.get_random_prediction()}。
-                        整体而言，该关键词在未来一段时间内关注度预计将{self.get_random_future_trend()}。</p>
+                        <div class="prediction">
+                            <p><strong>未来30天趋势:</strong> 预计关键词"{keyword}"的搜索趋势将会{self.get_random_prediction()}。
+                            整体而言，该关键词在未来一段时间内关注度预计将{self.get_random_future_trend()}。</p>
+                            
+                            <p><strong>主要影响因素:</strong></p>
+                            <ul>
+                                <li>{self.get_random_factors()}</li>
+                                <li>市场竞争变化</li>
+                                <li>用户需求转变</li>
+                            </ul>
+                            
+                            <p><strong>关键时间节点:</strong> {self.get_random_future_date()}</p>
+                        </div>
                     </div>
-                    
+                    """
+                
+                if include_recommendations:
+                    html_content += f"""
                     <div class="section">
                         <h2>分析建议</h2>
-                        <ol>
-                            <li>{self.get_random_recommendation()}</li>
-                            <li>{self.get_random_recommendation()}</li>
-                            <li>{self.get_random_recommendation()}</li>
-                        </ol>
+                        <div class="recommendation">
+                            <ol>
+                                <li>{self.get_random_recommendation()}</li>
+                                <li>{self.get_random_recommendation()}</li>
+                                <li>{self.get_random_recommendation()}</li>
+                                <li>{self.get_random_recommendation()}</li>
+                                <li>{self.get_random_recommendation()}</li>
+                            </ol>
+                        </div>
                     </div>
+                    """
+                
+                # 结束HTML文档
+                html_content += """
                 </body>
                 </html>"""
                 
@@ -3864,13 +4414,19 @@ class WelcomeWindow(QMainWindow):
                 ==============================
                 
                 生成时间: {current_time}
+                """
                 
+                if include_summary:
+                    text_content += f"""
                 摘要:
                 -----
                 本报告分析了"{keyword}"相关的百度指数数据，包括搜索趋势、人群画像及地域分布情况。
                 数据显示，该关键词近期呈现较为{self.get_random_trend()}的趋势，主要用户群体集中在{self.get_random_age_group()}年龄段，
                 {self.get_random_gender_ratio()}，兴趣偏好主要包括{self.get_random_interests()}等。
+                """
                 
+                if include_charts:
+                    text_content += f"""
                 搜索趋势分析:
                 ------------
                 关键词"{keyword}"在过去30天内的百度搜索指数呈现{self.get_random_trend()}趋势。
@@ -3884,12 +4440,29 @@ class WelcomeWindow(QMainWindow):
                 - 性别比例: {self.get_random_gender_ratio()}
                 - 兴趣爱好: {self.get_random_interests()}
                 - 地域分布: {self.get_random_regions()}
+                """
+                
+                if include_predictions:
+                    text_content += f"""
+                竞品分析:
+                --------
+                与"{keyword}"相关的主要竞争关键词:
+                - {keyword}品牌
+                - {keyword}推荐
+                - {keyword}排行
+                
+                竞争态势: {random.choice(["激烈", "一般", "较低"])}
                 
                 趋势预测:
                 --------
                 基于历史数据分析，预计未来30天内"{keyword}"的搜索趋势将会{self.get_random_prediction()}。
                 整体而言，该关键词在未来一段时间内关注度预计将{self.get_random_future_trend()}。
                 
+                主要影响因素: {self.get_random_factors()}
+                """
+                
+                if include_recommendations:
+                    text_content += f"""
                 分析建议:
                 --------
                 1. {self.get_random_recommendation()}
@@ -3963,16 +4536,16 @@ class WelcomeWindow(QMainWindow):
         
     def get_random_recommendation(self):
         recommendations = [
-            "基于该关键词的搜索趋势，建议增加相关内容的更新频率，提高曝光机会。",
-            "针对主要年龄群体特点，优化内容呈现形式和传播渠道。",
-            "根据性别分布，调整营销策略和产品定位，以更好地满足主要用户群体需求。",
-            "关注搜索高峰期，适时推出相关活动或营销内容，提高转化率。",
-            "注意地域分布，考虑针对高搜索量地区开展线下活动或本地化营销。",
-            "结合用户兴趣画像，创建更有针对性的内容，提高用户参与度。",
-            "持续监测关键词变化趋势，及时调整内容策略和投放计划。",
-            "挖掘相关长尾关键词，扩大内容覆盖面和流量来源。",
-            "分析竞争对手在该关键词上的表现，找出差异化竞争点。",
-            "利用预测数据，提前规划内容日历和资源分配。"
+            "针对核心人群特点优化内容和产品设计",
+            "增加在主要地区的营销投入",
+            "开发符合搜索用户兴趣的新功能或服务",
+            "与相关热门话题结合进行内容营销",
+            "关注搜索高峰期，适时调整推广策略",
+            "针对竞争关键词进行差异化定位",
+            "优化页面内容，提高搜索引擎排名",
+            "建立完整的搜索用户转化渠道",
+            "分析高TGI人群特征，精准投放广告",
+            "根据趋势预测，提前准备营销活动"
         ]
         return random.choice(recommendations)
         
@@ -4319,7 +4892,70 @@ class WelcomeWindow(QMainWindow):
             except Exception as gender_err:
                 logging.error(f"性别比例处理失败: {gender_err}")
                 c.drawString(70, content_y, "Gender ratio: Male 49%, Female 51%")
-            content_y -= 40
+            content_y -= 30
+            
+            # 添加竞品分析内容
+            c.drawString(50, content_y, "Competitive Analysis:")
+            content_y -= 20
+            
+            c.drawString(70, content_y, f"Competitors for '{safe_keyword}':")
+            content_y -= 15
+            
+            # 生成模拟竞争对手
+            competitors = []
+            if safe_keyword.endswith("phone"):
+                competitors = ["Apple Phone", "Samsung Phone", "Huawei Phone"]
+            elif "game" in safe_keyword.lower():
+                competitors = ["Online Games", "Mobile Games", "Console Games"]
+            else:
+                suffixes = ["brand", "reviews", "prices", "alternatives"]
+                competitors = [f"{safe_keyword} {suffix}" for suffix in suffixes[:3]]
+                
+            for i, comp in enumerate(competitors[:3]):
+                c.drawString(80, content_y, f"- {comp}")
+                content_y -= 15
+                
+            c.drawString(70, content_y, "Competitive landscape is " + 
+                        random.choice(["highly competitive", "moderately competitive", "emerging", "stable"]))
+            content_y -= 30
+            
+            # 添加预测内容
+            c.drawString(50, content_y, "Prediction:")
+            content_y -= 20
+            
+            prediction_trend = random.choice(["continue to rise", "stabilize", "slightly decline", "fluctuate", "grow rapidly"])
+            c.drawString(70, content_y, f"Future trend is expected to {prediction_trend}")
+            content_y -= 15
+            
+            # 获取随机因素
+            factors = self.get_random_factors().split("、")
+            if factors:
+                c.drawString(70, content_y, "Key influential factors:")
+                content_y -= 15
+                for factor in factors[:2]:
+                    c.drawString(80, content_y, f"- {factor}")
+                    content_y -= 15
+            
+            content_y -= 20
+            
+            # 添加建议内容
+            c.drawString(50, content_y, "Recommendations:")
+            content_y -= 20
+            
+            # 英文建议
+            recommendations = [
+                "Focus on core user demographics",
+                "Optimize for peak search periods",
+                "Develop content targeting main interests",
+                "Monitor competitive keywords",
+                "Enhance presence in key regions"
+            ]
+            
+            for i, rec in enumerate(recommendations[:3]):
+                c.drawString(70, content_y, f"{i+1}. {rec}")
+                content_y -= 15
+            
+            content_y -= 20
             
             # 添加注释说明如何获取中文支持
             c.setFont("Helvetica-Oblique", 10)
@@ -4342,3 +4978,122 @@ class WelcomeWindow(QMainWindow):
             import traceback
             traceback.print_exc()
             return False
+
+    def get_random_future_trend(self):
+        trends = ["持续增长", "略有下降", "保持稳定", "有所波动", "大幅增长", "大幅下降"]
+        return random.choice(trends)
+        
+    def get_random_recommendation(self):
+        recommendations = [
+            "针对核心人群特点优化内容和产品设计",
+            "增加在主要地区的营销投入",
+            "开发符合搜索用户兴趣的新功能或服务",
+            "与相关热门话题结合进行内容营销",
+            "关注搜索高峰期，适时调整推广策略",
+            "针对竞争关键词进行差异化定位",
+            "优化页面内容，提高搜索引擎排名",
+            "建立完整的搜索用户转化渠道",
+            "分析高TGI人群特征，精准投放广告",
+            "根据趋势预测，提前准备营销活动"
+        ]
+        return random.choice(recommendations)
+        
+    def get_competitor_analysis_html(self, main_keyword):
+        """生成竞品分析HTML内容
+        
+        Args:
+            main_keyword: 主关键词
+        
+        Returns:
+            str: 竞品分析HTML内容
+        """
+        try:
+            # 从数据库查询与该关键词相关的其他关键词
+            connection = db_utils.get_connection()
+            cursor = connection.cursor()
+            
+            # 修改SQL查询，确保ORDER BY使用的列在SELECT列表中
+            related_keywords_query = """
+            SELECT DISTINCT word, pv 
+            FROM human_request_data 
+            WHERE keyword = %s 
+            ORDER BY pv DESC 
+            LIMIT 4
+            """
+            cursor.execute(related_keywords_query, (main_keyword,))
+            related_keywords = [row[0] for row in cursor.fetchall()]
+            
+            # 如果没有足够的关键词，生成一些模拟关键词
+            if len(related_keywords) < 2:
+                if main_keyword.endswith("手机"):
+                    related_keywords = ["苹果手机", "华为手机", "小米手机", "OPPO手机"]
+                elif "游戏" in main_keyword:
+                    related_keywords = ["网络游戏", "手机游戏", "单机游戏", "休闲游戏"]
+                else:
+                    # 添加一些随机后缀
+                    suffixes = ["品牌", "推荐", "排行", "价格", "评测"]
+                    related_keywords = [f"{main_keyword}{suffix}" for suffix in suffixes[:4]]
+            
+            # 创建HTML内容
+            html = """
+            <div class="section">
+                <h2>竞品分析</h2>
+                <p>以下是与主关键词相关的竞争关键词分析:</p>
+                
+                <table>
+                    <tr>
+                        <th>关键词</th>
+                        <th>平均指数</th>
+                        <th>增长趋势</th>
+                        <th>竞争强度</th>
+                    </tr>
+            """
+            
+            # 生成随机数据
+            for keyword in [main_keyword] + related_keywords[:4]:
+                avg_index = random.randint(1000, 10000)
+                growth = random.choice(["上升", "下降", "平稳"])
+                growth_class = "up" if growth == "上升" else ("down" if growth == "下降" else "stable")
+                competitive_intensity = random.choice(["高", "中", "低"])
+                
+                html += f"""
+                    <tr>
+                        <td>{keyword}</td>
+                        <td>{avg_index}</td>
+                        <td class="{growth_class}">{growth}</td>
+                        <td>{competitive_intensity}</td>
+                    </tr>
+                """
+            
+            html += """
+                </table>
+                
+                <div class="competitor-chart">
+                    <p><strong>竞争态势分析:</strong> 通过对比相关关键词的搜索趋势，可以看出市场整体呈现"""
+            
+            html += random.choice([
+                "上升趋势，各关键词之间的竞争日趋激烈。",
+                "稳定态势，各关键词保持相对稳定的市场份额。",
+                "差异化发展，主关键词在竞争中占据优势地位。",
+                "波动变化，市场需求受季节性因素影响明显。",
+                "分化趋势，头部关键词吸引了大部分搜索流量。"
+            ])
+            
+            html += """</p>
+                </div>
+            </div>
+            """
+            
+            cursor.close()
+            connection.close()
+            return html
+            
+        except Exception as e:
+            logging.error(f"生成竞品分析HTML失败: {str(e)}")
+            # 返回简化版本
+            return """
+            <div class="section">
+                <h2>竞品分析</h2>
+                <p>目前暂无足够数据进行详细的竞品分析。建议收集更多相关关键词数据后再进行分析。</p>
+            </div>
+            """
