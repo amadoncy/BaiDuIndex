@@ -4571,14 +4571,9 @@ class WelcomeWindow(QMainWindow):
                     h1 {{ color: #2196F3; text-align: center; }}
                     h2 {{ color: #0D47A1; margin-top: 20px; }}
                     .time {{ color: #757575; font-style: italic; margin-bottom: 20px; text-align: center; }}
-                    .summary {{ background-color: #E3F2FD; padding: 15px; border-radius: 5px; }}
-                    .section {{ margin-top: 30px; }}
-                    table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
-                    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                    th {{ background-color: #f2f2f2; }}
-                    .up {{ color: #4CAF50; }}
-                    .down {{ color: #F44336; }}
-                    .stable {{ color: #FF9800; }}
+                    .summary {{ background-color: #E3F2FD; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
+                    .section {{ margin-top: 30px; background-color: #F5F5F5; padding: 15px; border-radius: 5px; }}
+                    .highlight {{ font-weight: bold; color: #0D47A1; }}
                     .competitor-chart {{ background-color: #F5F5F5; padding: 15px; border-radius: 5px; margin-top: 15px; }}
                     .prediction {{ background-color: #E8F5E9; padding: 15px; border-radius: 5px; margin-top: 15px; }}
                     .recommendation {{ background-color: #FFF8E1; padding: 15px; border-radius: 5px; margin-top: 15px; }}
@@ -4589,11 +4584,57 @@ class WelcomeWindow(QMainWindow):
                 <p class="time">生成时间: {current_time}</p>
                 """
                 
-            # 根据选项添加内容块
+            # 分析趋势数据
+            trend_summary = ""
+            trend_direction = "稳定"
+            trend_volatility = "低"
+            trend_peak = "无明显峰值"
+            trend_recent = "保持平稳"
+            
+            if trend_data and len(trend_data) > 1:
+                # 计算趋势基本信息
+                values = [val for _, val in trend_data if val is not None]
+                if values:
+                    start_value = values[0]
+                    end_value = values[-1]
+                    max_value = max(values)
+                    min_value = min(values)
+                    avg_value = sum(values) / len(values)
+                    
+                    # 判断整体趋势方向
+                    if end_value > start_value * 1.1:
+                        trend_direction = "上升"
+                    elif end_value < start_value * 0.9:
+                        trend_direction = "下降"
+                    
+                    # 判断波动性
+                    if max_value > avg_value * 1.5:
+                        trend_volatility = "高"
+                    elif max_value > avg_value * 1.2:
+                        trend_volatility = "中"
+                    
+                    # 查找峰值
+                    peak_index = values.index(max_value)
+                    if peak_index > 0 and peak_index < len(trend_data) - 1:
+                        peak_date = trend_data[peak_index][0]
+                        if hasattr(peak_date, 'strftime'):
+                            peak_date = peak_date.strftime('%Y年%m月')
+                        trend_peak = f"在{peak_date}达到峰值"
+                    
+                    # 最近走势
+                    recent_values = values[-min(6, len(values)):]
+                    if len(recent_values) > 1:
+                        recent_start = recent_values[0]
+                        recent_end = recent_values[-1]
+                        if recent_end > recent_start * 1.1:
+                            trend_recent = "呈上升趋势"
+                        elif recent_end < recent_start * 0.9:
+                            trend_recent = "呈下降趋势"
+                        else:
+                            trend_recent = "保持平稳"
+            
+            # 生成摘要
             if include_summary:
-                # 提取摘要数据
-                trend_description = "上升" if trend_data and len(trend_data) > 1 and trend_data[-1][1] > trend_data[0][1] else "下降"
-                
                 # 提取年龄信息
                 age_group = "不详"
                 if age_data:
@@ -4609,171 +4650,211 @@ class WelcomeWindow(QMainWindow):
                 interests = "不详"
                 if interest_data:
                     interests = "、".join([name for name, _ in interest_data[:3]])
+                
+                # 地域信息
+                regions = "全国各地"
+                if region_data:
+                    regions = "、".join([region for region, _ in region_data[:3]])
                     
                 html_content += f"""
                 <div class="summary">
-                    <h2>摘要</h2>
-                    <p>本报告分析了"{keyword}"相关的百度指数数据，包括搜索趋势、人群画像及地域分布情况。
-                    数据显示，该关键词近期呈现较为{trend_description}的趋势，主要用户群体集中在{age_group}年龄段，
-                    {gender_ratio}，兴趣偏好主要包括{interests}等。</p>
+                    <h2>报告摘要</h2>
+                    <p>本报告对"{keyword}"的搜索指数和用户画像进行了全面分析。研究数据显示，该关键词总体呈<span class="highlight">{trend_direction}</span>趋势，
+                    波动性<span class="highlight">{trend_volatility}</span>，{trend_peak}。最近一段时间内，搜索指数{trend_recent}。</p>
+                    
+                    <p>用户画像分析显示，搜索该关键词的用户主要集中在<span class="highlight">{age_group}</span>年龄段，性别比例为{gender_ratio}，
+                    主要兴趣包括{interests}。地域分布上，<span class="highlight">{regions}</span>的用户搜索量较大。</p>
+                    
+                    <p>基于这些数据，建议针对主要用户群体优化产品和营销策略，并关注相关市场趋势的变化。</p>
                 </div>
                 """
 
+            # 趋势分析部分 - 使用文字总结代替完整数据表格
             if include_charts:
-                # 趋势分析部分
                 html_content += f"""
                 <div class="section">
                     <h2>搜索趋势分析</h2>
-                    <table>
-                        <tr>
-                            <th>日期</th>
-                            <th>指数值</th>
-                        </tr>
                 """
                 
-                for date, value in trend_data:
-                    html_content += f"""
-                        <tr>
-                            <td>{date}</td>
-                            <td>{value}</td>
-                        </tr>
-                    """
+                if trend_data and len(trend_data) > 1:
+                    # 获取日期范围
+                    start_date = trend_data[0][0]
+                    end_date = trend_data[-1][0]
+                    if hasattr(start_date, 'strftime'):
+                        start_date = start_date.strftime('%Y年%m月%d日')
+                    if hasattr(end_date, 'strftime'):
+                        end_date = end_date.strftime('%Y年%m月%d日')
                     
+                    # 计算趋势数据
+                    values = [val for _, val in trend_data if val is not None]
+                    if values:
+                        start_value = values[0]
+                        end_value = values[-1]
+                        max_value = max(values)
+                        min_value = min(values)
+                        avg_value = sum(values) / len(values)
+                        
+                        # 计算变化百分比
+                        change_percent = ((end_value - start_value) / start_value * 100) if start_value > 0 else 0
+                        change_text = f"上升了{change_percent:.1f}%" if change_percent > 0 else f"下降了{abs(change_percent):.1f}%" if change_percent < 0 else "基本保持不变"
+                        
+                        # 查找最高点和最低点
+                        peak_index = values.index(max_value)
+                        valley_index = values.index(min_value)
+                        peak_date = trend_data[peak_index][0]
+                        valley_date = trend_data[valley_index][0]
+                        
+                        if hasattr(peak_date, 'strftime'):
+                            peak_date = peak_date.strftime('%Y年%m月%d日')
+                        if hasattr(valley_date, 'strftime'):
+                            valley_date = valley_date.strftime('%Y年%m月%d日')
+                        
+                        # 将分析结果展示为文字总结
+                        html_content += f"""
+                        <p>分析周期: <span class="highlight">{start_date}</span> 至 <span class="highlight">{end_date}</span></p>
+                        
+                        <p>在分析的{len(trend_data)}个数据点中，"{keyword}"的搜索指数总体{change_text}。
+                        期间最高指数为<span class="highlight">{max_value}</span>（{peak_date}），
+                        最低指数为<span class="highlight">{min_value}</span>（{valley_date}），
+                        平均指数为<span class="highlight">{avg_value:.1f}</span>。</p>
+                        """
+                        
+                        # 根据趋势特点给出分析
+                        if change_percent > 20:
+                            html_content += f"""<p>数据显示该关键词搜索热度<span class="highlight">增长迅速</span>，表明市场对此领域的兴趣正在快速提升。</p>"""
+                        elif change_percent < -20:
+                            html_content += f"""<p>数据显示该关键词搜索热度<span class="highlight">明显下降</span>，可能表明市场关注点正在转移。</p>"""
+                        elif abs(change_percent) <= 5:
+                            html_content += f"""<p>数据显示该关键词搜索热度<span class="highlight">相对稳定</span>，表明市场对此的需求处于稳定状态。</p>"""
+                        
+                        # 添加季节性分析
+                        if len(trend_data) > 30:
+                            html_content += """<p>长期数据分析显示，"""
+                            if max(values) > avg_value * 1.5 and min(values) < avg_value * 0.5:
+                                html_content += """该关键词搜索存在<span class="highlight">明显的波动性</span>，可能受季节性或特定事件影响。</p>"""
+                            else:
+                                html_content += """该关键词搜索热度相对<span class="highlight">稳定持续</span>，未显示明显的季节性波动。</p>"""
+                else:
+                    html_content += """<p>暂无足够数据进行趋势分析。</p>"""
+                
                 html_content += """
-                    </table>
                 </div>
                 """
                 
-                # 人群画像分析
+                # 人群画像分析 - 文字总结
                 html_content += """
                 <div class="section">
                     <h2>人群画像分析</h2>
                 """
                 
-                # 年龄分布
+                # 年龄分析
                 if age_data:
-                    html_content += """
-                    <h3>年龄分布</h3>
-                    <table>
-                        <tr>
-                            <th>年龄段</th>
-                            <th>比例</th>
-                        </tr>
+                    max_age = max(age_data, key=lambda x: x[1])
+                    sorted_ages = sorted(age_data, key=lambda x: x[1], reverse=True)
+                    
+                    html_content += f"""
+                    <p><strong>年龄分布:</strong> 搜索该关键词的用户主要集中在<span class="highlight">{max_age[0]}</span>年龄段，
+                    占比达到<span class="highlight">{max_age[1]:.1f}%</span>。
                     """
                     
-                    for name, rate in age_data:
-                        html_content += f"""
-                        <tr>
-                            <td>{name}</td>
-                            <td>{rate:.1f}%</td>
-                        </tr>
-                        """
-                        
-                    html_content += """
-                    </table>
-                    """
+                    if len(sorted_ages) > 1:
+                        html_content += f"""其次是{sorted_ages[1][0]}（{sorted_ages[1][1]:.1f}%）"""
+                        if len(sorted_ages) > 2:
+                            html_content += f"""和{sorted_ages[2][0]}（{sorted_ages[2][1]:.1f}%）"""
                     
-                # 性别分布
-                if gender_data:
-                    html_content += """
-                    <h3>性别分布</h3>
-                    <table>
-                        <tr>
-                            <th>性别</th>
-                            <th>比例</th>
-                        </tr>
-                    """
+                    html_content += "。</p>"
                     
+                    # 年龄特征分析
+                    if "19岁以下" in [age[0] for age in sorted_ages[:2]]:
+                        html_content += """<p>年轻用户比例较高，建议产品设计和营销内容更贴近年轻人喜好。</p>"""
+                    elif "50岁以上" in [age[0] for age in sorted_ages[:2]]:
+                        html_content += """<p>中老年用户比例较高，建议产品设计考虑易用性和功能实用性。</p>"""
+                
+                # 性别分析
+                if gender_data and len(gender_data) > 1:
+                    male_rate = 0
+                    female_rate = 0
                     for name, rate in gender_data:
-                        html_content += f"""
-                        <tr>
-                            <td>{name}</td>
-                            <td>{rate:.1f}%</td>
-                        </tr>
-                        """
-                        
-                    html_content += """
-                    </table>
-                    """
+                        if "男" in name:
+                            male_rate = rate
+                        elif "女" in name:
+                            female_rate = rate
                     
-                # 兴趣爱好
-                if interest_data:
-                    html_content += """
-                    <h3>兴趣爱好</h3>
-                    <table>
-                        <tr>
-                            <th>兴趣类别</th>
-                            <th>比例</th>
-                        </tr>
-                    """
+                    dominant_gender = "男性" if male_rate > female_rate else "女性"
+                    ratio = max(male_rate, female_rate) / min(male_rate, female_rate) if min(male_rate, female_rate) > 0 else 0
                     
-                    for name, rate in interest_data:
-                        html_content += f"""
-                        <tr>
-                            <td>{name}</td>
-                            <td>{rate:.1f}%</td>
-                        </tr>
-                        """
-                        
-                    html_content += """
-                    </table>
-                    """
+                    html_content += f"""
+                    <p><strong>性别分布:</strong> 搜索该关键词的用户中，<span class="highlight">{dominant_gender}</span>占主导，
+                    男女比例约为{male_rate:.1f}:{female_rate:.1f}。"""
                     
+                    if ratio > 2:
+                        html_content += f"性别差异<span class=\"highlight\">显著</span>，建议重点关注{dominant_gender}用户需求。"
+                    else:
+                        html_content += "男女分布较为平衡，建议兼顾不同性别用户需求。"
+                    
+                    html_content += "</p>"
+                
                 # 地域分布
                 if region_data:
-                    html_content += """
-                    <h3>地域分布</h3>
-                    <table>
-                        <tr>
-                            <th>地区</th>
-                            <th>搜索热度</th>
-                        </tr>
+                    top_regions = region_data[:3]
+                    region_names = [name for name, _ in top_regions]
+                    
+                    html_content += f"""
+                    <p><strong>地域分布:</strong> 搜索热度主要集中在<span class="highlight">{'、'.join(region_names)}</span>等地区。
                     """
                     
-                    for province, value in region_data:
-                        html_content += f"""
-                        <tr>
-                            <td>{province}</td>
-                            <td>{value}</td>
-                        </tr>
-                        """
-                        
-                    html_content += """
-                    </table>
-                    """
+                    # 判断是否集中在一线城市
+                    first_tier = ["北京", "上海", "广州", "深圳"]
+                    if any(city in name for name, _ in top_regions for city in first_tier):
+                        html_content += "一线城市用户关注度较高，表明产品/服务在发达地区有较大市场。"
+                    elif all(("省" in name or "自治区" in name) for name, _ in top_regions):
+                        html_content += "主要分布在省级行政区，表明产品/服务在全国范围内有广泛需求。"
                     
+                    html_content += "</p>"
+                
                 html_content += """
                 </div>
                 """
 
-            # 需求分析
+            # 需求分析 - 文字总结
             if include_predictions and demand_data:
                 html_content += """
                 <div class="section">
                     <h2>需求分析</h2>
-                    <div class="prediction">
-                        <p><strong>相关搜索词:</strong></p>
-                        <table>
-                            <tr>
-                                <th>搜索词</th>
-                                <th>搜索量</th>
-                            </tr>
                 """
                 
-                for word, pv in demand_data:
+                if demand_data:
+                    top_demands = demand_data[:5]
                     html_content += f"""
-                            <tr>
-                                <td>{word}</td>
-                                <td>{pv}</td>
-                            </tr>
+                    <p><strong>热门搜索词:</strong> 与"{keyword}"相关的热门搜索包括
+                    <span class="highlight">{'、'.join([word for word, _ in top_demands])}</span>。</p>
+                    
+                    <p>这表明用户在搜索{keyword}时，主要关注以下几个方面：</p>
+                    <ul>
                     """
                     
+                    # 分析搜索词特点
+                    has_price = any("价格" in word or "多少钱" in word for word, _ in top_demands)
+                    has_brand = any("品牌" in word or "排行" in word for word, _ in top_demands)
+                    has_function = any("怎么" in word or "如何" in word or "功能" in word for word, _ in top_demands)
+                    
+                    if has_price:
+                        html_content += "<li>产品或服务的<span class=\"highlight\">价格因素</span>，表明价格是用户决策的重要考量</li>"
+                    if has_brand:
+                        html_content += "<li>关注<span class=\"highlight\">品牌和排名</span>，表明用户在寻找可靠和有口碑的选择</li>"
+                    if has_function:
+                        html_content += "<li>产品的<span class=\"highlight\">功能和使用方法</span>，表明用户关注实用性和易用性</li>"
+                    
+                    html_content += f"""
+                    <li>搜索词中的高频内容反映了用户对{keyword}的主要需求和关注点</li>
+                    </ul>
+                    """
+                
                 html_content += """
-                        </table>
-                    </div>
                 </div>
                 """
 
+            # 分析建议部分保持不变，因为已经是总结性的
             if include_recommendations:
                 # 分析建议基于实际数据
                 recommendations = []
@@ -4797,6 +4878,19 @@ class WelcomeWindow(QMainWindow):
                 if demand_data:
                     top_demands = [word for word, _ in demand_data[:2]]
                     recommendations.append(f"针对用户关注的{'和'.join(top_demands)}等热门话题，提供专业内容")
+                    
+                # 基于趋势的建议
+                if trend_data and len(trend_data) > 1:
+                    values = [val for _, val in trend_data if val is not None]
+                    if values:
+                        start_value = values[0]
+                        end_value = values[-1]
+                        change_percent = ((end_value - start_value) / start_value * 100) if start_value > 0 else 0
+                        
+                        if change_percent > 20:
+                            recommendations.append("把握搜索热度上升趋势，加大市场投入力度")
+                        elif change_percent < -20:
+                            recommendations.append("关注搜索热度下降趋势，寻找新的增长点")
                     
                 # 通用建议
                 recommendations.append("持续跟踪市场趋势，及时调整产品策略")
