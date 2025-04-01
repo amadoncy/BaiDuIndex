@@ -2622,21 +2622,53 @@ class WelcomeWindow(QMainWindow):
             if not results:
                 return
 
-            # 处理数据 - 采样优化
+            # 处理数据 - 显示更多数据点并优化最近数据
             total_points = len(results)
-            sample_size = min(total_points, 100)  # 最多显示100个数据点
-            step = max(1, total_points // sample_size)
-
-            dates = []
-            values = []
-            for i in range(0, total_points, step):
-                row = results[i]
-                if row[0] and hasattr(row[0], 'strftime'):
-                    dates.append(row[0].strftime('%Y-%m-%d'))
-                else:
-                    dates.append(str(row[0]))
-                values.append(float(row[1]) if row[1] is not None else 0)
-
+            
+            # 增加数据点数量，从100增加到300
+            sample_size = min(total_points, 300)  
+            
+            # 如果总数据点小于或等于300，直接全部显示
+            if total_points <= sample_size:
+                dates = []
+                values = []
+                for row in results:
+                    if row[0] and hasattr(row[0], 'strftime'):
+                        dates.append(row[0].strftime('%Y-%m-%d'))
+                    else:
+                        dates.append(str(row[0]))
+                    values.append(float(row[1]) if row[1] is not None else 0)
+            else:
+                # 优先显示最近的数据，并在早期数据中采样
+                # 计算前1/3的数据进行采样，后2/3的数据全部显示
+                early_data_count = total_points // 3
+                recent_data_count = total_points - early_data_count
+                
+                # 采样早期数据
+                early_sample_size = min(early_data_count, sample_size - recent_data_count)
+                early_step = max(1, early_data_count // early_sample_size)
+                
+                dates = []
+                values = []
+                
+                # 对早期数据进行采样
+                for i in range(0, early_data_count, early_step):
+                    row = results[i]
+                    if row[0] and hasattr(row[0], 'strftime'):
+                        dates.append(row[0].strftime('%Y-%m-%d'))
+                    else:
+                        dates.append(str(row[0]))
+                    values.append(float(row[1]) if row[1] is not None else 0)
+                
+                # 显示全部最近数据
+                for i in range(early_data_count, total_points):
+                    row = results[i]
+                    if row[0] and hasattr(row[0], 'strftime'):
+                        dates.append(row[0].strftime('%Y-%m-%d'))
+                    else:
+                        dates.append(str(row[0]))
+                    values.append(float(row[1]) if row[1] is not None else 0)
+            
             # 使用pyecharts创建趋势图
             line = Line(init_opts=opts.InitOpts(
                 width="100%",
@@ -2661,7 +2693,7 @@ class WelcomeWindow(QMainWindow):
                 )
             )
 
-            # 优化全局配置
+            # 优化全局配置，默认显示最近30%的数据
             line.set_global_opts(
                 title_opts=opts.TitleOpts(
                     title=f"{keyword}搜索趋势",
@@ -2720,9 +2752,14 @@ class WelcomeWindow(QMainWindow):
                     opts.DataZoomOpts(
                         is_show=True,
                         type_="slider",
-                        range_start=0,
+                        # 默认只显示最近30%的数据
+                        range_start=70,
                         range_end=100,
                         pos_bottom="5%"
+                    ),
+                    # 添加内部框选区域缩放组件
+                    opts.DataZoomOpts(
+                        type_="inside"
                     )
                 ],
                 legend_opts=opts.LegendOpts(
