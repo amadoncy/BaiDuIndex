@@ -18,13 +18,8 @@ from utils.get_trend_utils import get_trend_utils, select_area
 from config.city_codes import get_all_regions, get_region_provinces, get_province_cities
 from pyecharts import options as opts
 from pyecharts.charts import Line, Bar, Pie, Map, Graph, Page
-from pyecharts.commons.utils import JsCode
 from utils import db_utils
 from gui.data_display_window import DataDisplayWindow
-from gui.chart_widget import ChartWidget
-import traceback
-import math
-
 
 class DataCollectionThread(QThread):
     progress_signal = pyqtSignal(str)
