@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel,
                              QGroupBox)
 from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSize, QThread, pyqtSignal, QUrl
 from PyQt5.QtGui import QFont, QColor, QPalette, QLinearGradient, QPainter, QIcon
-from PyQt5.QtWebEngineWidgets import QWebEngineView
+from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineSettings
 import os
 import logging
 import datetime
@@ -23,6 +23,7 @@ from utils import db_utils
 from gui.data_display_window import DataDisplayWindow
 from gui.chart_widget import ChartWidget
 import traceback
+import math
 
 
 class DataCollectionThread(QThread):
@@ -195,6 +196,7 @@ class WelcomeWindow(QMainWindow):
         # 确保缓存目录存在
         if not os.path.exists(self.cache_dir):
             os.makedirs(self.cache_dir)
+            
         self.init_ui()
         # 创建定时器，每30分钟更新一次天气
         self.weather_timer = QTimer(self)
@@ -1513,6 +1515,11 @@ class WelcomeWindow(QMainWindow):
         self.region_map_view = QWebEngineView()
         self.region_map_view.setMinimumHeight(500)
         
+        # 配置WebEngineView设置以允许本地文件访问
+        settings = self.region_map_view.settings()
+        settings.setAttribute(QWebEngineSettings.LocalContentCanAccessFileUrls, True)
+        settings.setAttribute(QWebEngineSettings.AllowRunningInsecureContent, True)
+        
         layout.addLayout(view_layout)
         layout.addWidget(self.region_map_view)
     
@@ -1542,31 +1549,64 @@ class WelcomeWindow(QMainWindow):
         """显示地域分布热力图视图"""
         try:
             import json
+            import math
             import os
-            from PyQt5.QtCore import QUrl, QTimer
-            
             print("渲染热力图视图...")
             
             # 确定资源文件路径
             base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            echarts_path = os.path.join(base_dir, "resources", "echarts.min.js")
-            china_path = os.path.join(base_dir, "resources", "china.js")
+            resources_dir = os.path.join(base_dir, "resources")
             
-            # 检查文件是否存在
-            echarts_exists = os.path.exists(echarts_path)
-            china_exists = os.path.exists(china_path)
+            # 获取文件路径
+            echarts_js_path = os.path.join(resources_dir, "echarts.min.js")
+            china_js_path = os.path.join(resources_dir, "china.js")
             
-            print(f"资源文件检查: echarts.min.js {'存在' if echarts_exists else '不存在'}, " 
-                  f"china.js {'存在' if china_exists else '不存在'}")
+            # 检查文件存在
+            echarts_exists = os.path.exists(echarts_js_path)
+            china_exists = os.path.exists(china_js_path)
             
-            # 获取文件URLs
-            echarts_url = QUrl.fromLocalFile(echarts_path).toString() if echarts_exists else ""
-            china_url = QUrl.fromLocalFile(china_path).toString() if china_exists else ""
+            # 监听URL变化事件，如果包含fallback参数，切换到表格视图
+            self.region_map_view.urlChanged.connect(self.handle_url_changed)
             
-            print(f"资源文件URL: \n - echarts: {echarts_url}\n - china: {china_url}")
+            # 创建嵌入HTML的WebView
+            if not echarts_exists:
+                print("本地未找到ECharts库文件，将使用表格视图")
+                self.region_view_selector.setCurrentIndex(0)  # 切换到表格视图
+                return
+                
+            # 直接读取JS文件内容
+            echarts_js = ''
+            china_js = ''
+            
+            try:
+                with open(echarts_js_path, 'r', encoding='utf-8') as f:
+                    echarts_js = f.read()
+                    print(f"已读取echarts.min.js，大小: {len(echarts_js)} 字节")
+            except Exception as e:
+                print(f"读取echarts.min.js失败: {str(e)}")
+                self.region_view_selector.setCurrentIndex(0)  # 切换到表格视图
+                return
+                
+            if china_exists:
+                try:
+                    with open(china_js_path, 'r', encoding='utf-8') as f:
+                        china_js = f.read()
+                        print(f"已读取china.js，大小: {len(china_js)} 字节")
+                except Exception as e:
+                    print(f"读取china.js失败: {str(e)}")
+                    china_js = ''
             
             # 转换为JSON字符串，用于ECharts
-            map_data_json = json.dumps(region_data)
+            # 确保处理数据中的NaN值
+            processed_data = []
+            for item in region_data:
+                value = item['value']
+                if isinstance(value, (int, float)) and not math.isnan(value):
+                    processed_data.append({"name": item['name'], "value": value})
+                else:
+                    processed_data.append({"name": item['name'], "value": 0})
+            
+            map_data_json = json.dumps(processed_data)
             
             # 创建直接内嵌ECharts代码和地图数据的HTML
             html = f"""
@@ -1614,6 +1654,12 @@ class WelcomeWindow(QMainWindow):
                         padding-top: 100px;
                     }}
                 </style>
+                <script>
+                    {echarts_js}
+                </script>
+                <script>
+                    {china_js}
+                </script>
             </head>
             <body>
                 <div id="main"></div>
@@ -1630,223 +1676,154 @@ class WelcomeWindow(QMainWindow):
                     console.log(message);
                 }}
                 
-                // 加载echarts.js
+                // 页面加载完成
                 window.onload = function() {{
-                    log("页面加载完成，开始初始化...");
-                    
-                    // 尝试多种方式加载ECharts
-                    if (typeof echarts === 'undefined') {{
-                        log("ECharts未定义，尝试从本地加载", true);
+                    try {{
+                        log("页面加载完成，开始初始化...");
                         
-                        // 方法1：创建script标签加载本地文件
-                        var script = document.createElement('script');
-                        script.onload = function() {{
-                            log("本地ECharts脚本加载成功");
-                            loadMap();
-                        }};
-                        script.onerror = function() {{
-                            log("本地ECharts脚本加载失败，尝试CDN", true);
-                            loadCDN();
-                        }};
-                        script.src = '{echarts_url or "echarts.min.js"}';
-                        document.head.appendChild(script);
-                    }} else {{
-                        log("ECharts已加载");
-                        loadMap();
-                    }}
-                    
-                    function loadCDN() {{
-                        var script = document.createElement('script');
-                        script.onload = function() {{
-                            log("CDN ECharts脚本加载成功");
-                            loadMap();
-                        }};
-                        script.onerror = function() {{
-                            log("CDN ECharts脚本加载失败，切换到表格视图", true);
-                            showFallback();
-                        }};
-                        script.src = 'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js';
-                        document.head.appendChild(script);
-                    }}
-                    
-                    function loadMap() {{
                         if (typeof echarts === 'undefined') {{
-                            log("加载后ECharts仍未定义", true);
+                            log("ECharts未加载，切换到表格视图", true);
                             showFallback();
                             return;
                         }}
                         
-                        log("ECharts已成功加载");
-                        
-                        // 中国地图数据
-                        var mapRegistered = false;
-                        
-                        try {{
-                            // 简化版地图数据（无需外部地图文件）
-                            var chinaJson = {{
-                                "type": "FeatureCollection",
-                                "features": [
-                                    {{ "type": "Feature", "properties": {{ "name": "北京" }}, "id": "110000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "天津" }}, "id": "120000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "河北" }}, "id": "130000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "山西" }}, "id": "140000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "内蒙古" }}, "id": "150000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "辽宁" }}, "id": "210000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "吉林" }}, "id": "220000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "黑龙江" }}, "id": "230000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "上海" }}, "id": "310000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "江苏" }}, "id": "320000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "浙江" }}, "id": "330000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "安徽" }}, "id": "340000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "福建" }}, "id": "350000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "江西" }}, "id": "360000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "山东" }}, "id": "370000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "河南" }}, "id": "410000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "湖北" }}, "id": "420000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "湖南" }}, "id": "430000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "广东" }}, "id": "440000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "广西" }}, "id": "450000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "海南" }}, "id": "460000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "重庆" }}, "id": "500000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "四川" }}, "id": "510000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "贵州" }}, "id": "520000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "云南" }}, "id": "530000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "西藏" }}, "id": "540000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "陕西" }}, "id": "610000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "甘肃" }}, "id": "620000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "青海" }}, "id": "630000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "宁夏" }}, "id": "640000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "新疆" }}, "id": "650000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "台湾" }}, "id": "710000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "香港" }}, "id": "810000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }},
-                                    {{ "type": "Feature", "properties": {{ "name": "澳门" }}, "id": "820000", "geometry": {{ "type": "Polygon", "coordinates": [[]] }} }}
-                                ]
-                            }};
-                            
-                            // 注册地图
-                            echarts.registerMap('china', chinaJson);
-                            log("成功注册内置中国地图");
-                            mapRegistered = true;
-                            
-                            // 渲染图表
-                            renderChart();
-                        }} catch (e) {{
-                            log("注册地图失败: " + e.message, true);
-                            showFallback();
-                        }}
-                    }}
-                    
-                    function renderChart() {{
-                        try {{
-                            // 初始化ECharts实例
-                            var chart = echarts.init(document.getElementById('main'));
-                            log("ECharts实例初始化成功");
-                            
-                            // 准备数据
-                            var mapData = {map_data_json};
-                            log(`数据解析成功: ${{mapData.length}}项`);
-                            
-                            // 配置选项
-                            var option = {{
-                                backgroundColor: '#1a237e',
-                                title: {{
-                                    text: '地域分布热力图',
-                                    left: 'center',
-                                    top: '20px',
-                                    textStyle: {{
-                                        color: '#fff',
-                                        fontSize: 20
-                                    }}
-                                }},
-                                tooltip: {{
-                                    trigger: 'item',
-                                    formatter: function(params) {{
-                                        if (params.data) {{
-                                            return params.name + '<br/>搜索指数: ' + params.data.value;
-                                        }} else {{
-                                            return params.name + '<br/>搜索指数: 暂无数据';
-                                        }}
-                                    }}
-                                }},
-                                visualMap: {{
-                                    min: 0,
-                                    max: {max_value},
-                                    left: '10%',
-                                    top: 'middle',
-                                    text: ['高', '低'],
-                                    calculable: true,
-                                    inRange: {{
-                                        color: ['#C6E2FF', '#1E90FF', '#002366']
-                                    }},
-                                    textStyle: {{
-                                        color: '#fff'
-                                    }}
-                                }},
-                                series: [
-                                    {{
-                                        name: '搜索指数',
-                                        type: 'map',
-                                        map: 'china',
-                                        roam: true,
-                                        zoom: 1.2,
-                                        scaleLimit: {{
-                                            min: 1,
-                                            max: 3
-                                        }},
-                                        itemStyle: {{
-                                            areaColor: '#323c48',
-                                            borderColor: '#111'
-                                        }},
-                                        emphasis: {{
-                                            itemStyle: {{
-                                                areaColor: '#ff5722'
-                                            }},
-                                            label: {{
-                                                show: true,
-                                                color: '#fff'
-                                            }}
-                                        }},
-                                        data: mapData
-                                    }}
-                                ]
-                            }};
-                            
-                            // 应用配置
-                            chart.setOption(option);
-                            log("地图渲染完成");
-                            
-                            // 窗口大小改变时重新调整大小
-                            window.addEventListener('resize', function() {{
-                                chart.resize();
-                            }});
-                            
-                            // 10秒后隐藏日志
-                            setTimeout(function() {{
-                                var logElement = document.getElementById('error-log');
-                                logElement.style.height = '20px';
-                                logElement.style.opacity = '0.5';
-                            }}, 10000);
-                        }} catch (e) {{
-                            log("渲染图表失败: " + e.message, true);
-                            showFallback();
-                        }}
-                    }}
-                    
-                    function showFallback() {{
-                        log("显示备用表格视图", false);
-                        document.getElementById('main').innerHTML = `
-                        <div class="fallback">
-                            <h2>热力图加载失败</h2>
-                            <p>正在为您显示备用表格数据...</p>
-                        </div>
-                        `;
-                        
-                        // 通知PyQt跳转到表格视图
-                        setTimeout(function() {{
-                            window.location.href = 'about:blank?fallback=true';
-                        }}, 2000);
+                        log("ECharts已成功加载，开始渲染地图...");
+                        renderChart();
+                    }} catch (e) {{
+                        log("初始化出错: " + e.message, true);
+                        showFallback();
                     }}
                 }};
+                
+                function renderChart() {{
+                    try {{
+                        log("开始渲染热力图...");
+                        // 初始化ECharts实例
+                        var chart = echarts.init(document.getElementById('main'));
+                        
+                        // 准备数据
+                        var mapData = {map_data_json};
+                        var maxValue = {max_value};
+                        
+                        // 检查数据
+                        log("地图数据准备完成: " + mapData.length + " 条数据");
+                        
+                        // 配置选项
+                        var option = {{
+                            title: {{
+                                text: '地域分布热力图',
+                                subtext: '基于百度指数的地域分布数据',
+                                left: 'center',
+                                textStyle: {{
+                                    color: '#ffffff'
+                                }},
+                                subtextStyle: {{
+                                    color: '#cccccc'
+                                }}
+                            }},
+                            tooltip: {{
+                                trigger: 'item',
+                                formatter: function(params) {{
+                                    // 保证值始终是有效数字
+                                    var value = params.value;
+                                    if (value === undefined || isNaN(value)) {{
+                                        value = 0;
+                                    }}
+                                    return params.name + '<br/>搜索指数: ' + value;
+                                }}
+                            }},
+                            toolbox: {{
+                                show: true,
+                                orient: 'vertical',
+                                left: 'right',
+                                top: 'center',
+                                feature: {{
+                                    dataView: {{readOnly: false}},
+                                    restore: {{}},
+                                    saveAsImage: {{}}
+                                }},
+                                iconStyle: {{
+                                    color: '#ffffff'
+                                }}
+                            }},
+                            visualMap: {{
+                                min: 0,
+                                max: maxValue,
+                                left: '10%',
+                                top: 'middle',
+                                text: ['高', '低'],
+                                calculable: true,
+                                inRange: {{
+                                    color: ['#C6E2FF', '#1E90FF', '#002366']
+                                }},
+                                textStyle: {{
+                                    color: '#fff'
+                                }}
+                            }},
+                            series: [
+                                {{
+                                    name: '搜索指数',
+                                    type: 'map',
+                                    map: 'china',
+                                    roam: true,
+                                    zoom: 1.2,
+                                    scaleLimit: {{
+                                        min: 0.5,
+                                        max: 3
+                                    }},
+                                    itemStyle: {{
+                                        areaColor: '#323c48',
+                                        borderColor: '#111'
+                                    }},
+                                    emphasis: {{
+                                        itemStyle: {{
+                                            areaColor: '#ff5722'
+                                        }},
+                                        label: {{
+                                            show: true,
+                                            color: '#fff'
+                                        }}
+                                    }},
+                                    data: mapData
+                                }}
+                            ]
+                        }};
+                        
+                        // 应用配置
+                        chart.setOption(option);
+                        log("热力图渲染完成");
+                        
+                        // 窗口大小改变时重新调整大小
+                        window.addEventListener('resize', function() {{
+                            chart.resize();
+                        }});
+                        
+                        // 10秒后隐藏日志
+                        setTimeout(function() {{
+                            var logElement = document.getElementById('error-log');
+                            logElement.style.height = '20px';
+                            logElement.style.opacity = '0.5';
+                        }}, 10000);
+                    }} catch (e) {{
+                        log("渲染图表失败: " + e.message, true);
+                        showFallback();
+                    }}
+                }}
+                
+                function showFallback() {{
+                    log("显示备用表格视图", false);
+                    document.getElementById('main').innerHTML = `
+                    <div class="fallback">
+                        <h2>热力图加载失败</h2>
+                        <p>正在为您显示备用表格数据...</p>
+                    </div>
+                    `;
+                    
+                    // 通知PyQt跳转到表格视图
+                    setTimeout(function() {{
+                        window.location.href = 'about:blank?fallback=true';
+                    }}, 2000);
+                }}
                 </script>
             </body>
             </html>
@@ -1857,22 +1834,36 @@ class WelcomeWindow(QMainWindow):
             print("热力图HTML已更新")
             
         except Exception as e:
-            print(f"热力图渲染失败，使用表格视图: {str(e)}")
-            self.update_region_table_view(region_data, max_value)
+            import logging
+            logging.error(f"更新地域分布热力图时出错: {str(e)}")
+            print(f"错误: {str(e)}")
             import traceback
             traceback.print_exc()
+            
+            # 如果出现错误，尝试切换到表格视图
+            try:
+                if hasattr(self, 'region_view_selector'):
+                    self.region_view_selector.setCurrentIndex(0)  # 切换到表格视图
+            except:
+                pass
 
     def handle_navigation_request(self, url):
-        """处理WebView的导航请求"""
-        url_string = url.toString()
-        if "fallback=true" in url_string:
-            print("检测到热力图加载失败，切换到表格视图")
-            # 使用QTimer避免在信号处理器中修改
-            QTimer.singleShot(100, lambda: self.update_region_table_view(self.current_region_data, self.current_region_max_value))
-            # 同时切换下拉框选项
-            if hasattr(self, 'region_view_selector'):
-                self.region_view_selector.setCurrentIndex(0)
-        return True  # 允许导航继续
+        """处理导航请求"""
+        url_str = url.toString()
+        print(f"导航到: {url_str}")
+        if 'fallback=true' in url_str:
+            print("检测到热力图失败，切换到表格视图")
+            # 切换到表格视图
+            self.region_view_selector.setCurrentIndex(0)
+            
+    def handle_url_changed(self, url):
+        """处理URL改变事件"""
+        url_str = url.toString()
+        print(f"URL改变: {url_str}")
+        if 'fallback=true' in url_str:
+            print("检测到热力图失败，切换到表格视图")
+            # 切换到表格视图
+            self.region_view_selector.setCurrentIndex(0)
 
     def init_demand_tab(self):
         """初始化需求图谱标签页"""
