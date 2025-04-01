@@ -2557,8 +2557,16 @@ class WelcomeWindow(QMainWindow):
                 return
 
             selected_date = latest_date[0]
-            if isinstance(selected_date, datetime.date):
+            # 检查日期类型并转换
+            if selected_date and hasattr(selected_date, 'strftime'):
                 selected_date = selected_date.strftime('%Y-%m-%d')
+            elif selected_date and isinstance(selected_date, str):
+                # 已经是字符串格式，不需要转换
+                pass
+            else:
+                # 转换为字符串以避免类型问题
+                selected_date = str(selected_date)
+            
             print(f"使用日期: {selected_date}")
 
             try:
@@ -2623,7 +2631,7 @@ class WelcomeWindow(QMainWindow):
             values = []
             for i in range(0, total_points, step):
                 row = results[i]
-                if isinstance(row[0], datetime.date):
+                if row[0] and hasattr(row[0], 'strftime'):
                     dates.append(row[0].strftime('%Y-%m-%d'))
                 else:
                     dates.append(str(row[0]))
@@ -2773,10 +2781,17 @@ class WelcomeWindow(QMainWindow):
     def analyze_portrait_data(self, cursor, keyword, date):
         """分析人群画像数据"""
         try:
-            # 将字符串日期转换为datetime.date对象
-            if isinstance(date, str):
-                date = datetime.datetime.strptime(date, '%Y-%m-%d').date()
-
+            # 将字符串日期转换为datetime.date对象，并处理可能的类型问题
+            if date and isinstance(date, str):
+                try:
+                    # 使用导入的datetime，而不是datetime.datetime
+                    from datetime import datetime as dt
+                    date = dt.strptime(date, '%Y-%m-%d').date()
+                except ValueError:
+                    # 如果日期格式不正确，记录错误但继续使用原始值
+                    logging.error(f"无法解析日期字符串: {date}")
+                    # 不修改date值，使用原始值继续
+            
             print(f"Debug - 查询参数: keyword={keyword}, date={date}, date类型={type(date)}")
 
             # 激活人群画像标签页
@@ -4230,11 +4245,11 @@ class WelcomeWindow(QMainWindow):
                             break
                     
                 age_group = self.get_random_age_group()
-                if not age_group or not isinstance(age_group, str):
+                if not age_group or not isinstance(age_group, (str, bytes)):
                     age_group = "25-34"
                     
                 gender_ratio = self.get_random_gender_ratio()
-                if not gender_ratio or not isinstance(gender_ratio, str):
+                if not gender_ratio or not isinstance(gender_ratio, (str, bytes)):
                     gender_ratio = "男性占45%，女性占55%"
             except Exception as trend_err:
                 logging.error(f"获取趋势数据失败: {trend_err}")
