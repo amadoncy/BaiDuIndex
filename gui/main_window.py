@@ -5,8 +5,10 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel,
                              QLineEdit, QProgressBar, QTextEdit, QTabWidget,
                              QTableWidget, QTableWidgetItem, QHeaderView,
                              QGroupBox, QRadioButton, QButtonGroup, QCheckBox,
-                             QProgressDialog, QFileDialog, QInputDialog)
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSize, QThread, pyqtSignal, QUrl
+                             QProgressDialog, QFileDialog, QInputDialog,
+                             QMenuBar, QAction, QDialog, QGridLayout,
+                             QScrollArea)
+from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSize, QThread, pyqtSignal, QUrl, QCoreApplication
 from PyQt5.QtGui import QFont, QColor, QPalette, QLinearGradient, QPainter, QIcon
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineSettings
 import os
@@ -23,6 +25,8 @@ from utils import db_utils
 from gui.data_display_window import DataDisplayWindow
 import random
 import time
+# 导入聚类分析工具
+from utils.clustering_utils import ClusteringUtils
 
 
 class DataCollectionThread(QThread):
@@ -195,6 +199,17 @@ class WelcomeWindow(QMainWindow):
         # 确保缓存目录存在
         if not os.path.exists(self.cache_dir):
             os.makedirs(self.cache_dir)
+        
+        # 初始化聚类工具
+        self.clustering_utils = ClusteringUtils()
+        
+        # 确保聚类数据目录存在
+        self.clusters_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'clusters')
+        if not os.path.exists(self.clusters_dir):
+            os.makedirs(self.clusters_dir)
+            
+        # 创建菜单栏
+        self.create_menu_bar()
 
         self.init_ui()
         # 创建定时器，每30分钟更新一次天气
@@ -387,6 +402,7 @@ class WelcomeWindow(QMainWindow):
             # 添加功能项
             functions = [
                 {"title": "数据采集", "description": "开始收集养老需求数据"},
+                {"title": "聚类分析", "description": "对关键词和用户行为进行聚类"},
                 {"title": "数据分析", "description": "分析已收集的数据"},
                 {"title": "数据展示", "description": "展示分析结果"},
                 {"title": "数据报告", "description": "生成综合分析报告"},
@@ -432,6 +448,7 @@ class WelcomeWindow(QMainWindow):
 
             # 添加各个功能页面
             self.content_stack.addWidget(self.create_data_collection_page())
+            self.content_stack.addWidget(self.create_clustering_page())  # 添加聚类分析页面
             self.content_stack.addWidget(self.create_data_analysis_page())
             self.content_stack.addWidget(self.create_data_display_page())
             self.content_stack.addWidget(self.create_export_page())
@@ -1811,6 +1828,11 @@ class WelcomeWindow(QMainWindow):
             if hasattr(self, 'collection_thread') and self.collection_thread and self.collection_thread.isRunning():
                 self.collection_thread.stop()
                 self.collection_thread.wait()
+                
+            # 停止聚类分析线程
+            if hasattr(self, 'clustering_thread') and self.clustering_thread and self.clustering_thread.isRunning():
+                self.clustering_thread.stop()
+                self.clustering_thread.wait()
 
             # 停止天气更新定时器
             if hasattr(self, 'weather_timer'):
@@ -5073,3 +5095,1194 @@ class WelcomeWindow(QMainWindow):
             import traceback
             traceback.print_exc()
             return False
+
+    def create_clustering_page(self):
+        """创建聚类分析页面"""
+        clustering_page = QWidget()
+        main_layout = QVBoxLayout(clustering_page)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
+        
+        # 标题区域
+        title_container = QWidget()
+        title_container.setStyleSheet("background-color: #3f51b5; border-radius: 8px;")
+        title_layout = QVBoxLayout(title_container)
+        title_layout.setContentsMargins(20, 15, 20, 15)
+        
+        title_label = QLabel("聚类分析")
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: white;")
+        title_layout.addWidget(title_label)
+        
+        main_layout.addWidget(title_container)
+        
+        # 参数设置区域
+        params_group = QGroupBox("分析参数")
+        params_group.setStyleSheet("""
+            QGroupBox {
+                font-size: 14px;
+                font-weight: bold;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                margin-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        params_layout = QGridLayout(params_group)
+        params_layout.setContentsMargins(20, 25, 20, 20)
+        params_layout.setSpacing(15)
+        
+        # 聚类类型
+        type_label = QLabel("聚类类型:")
+        type_label.setStyleSheet("font-weight: bold;")
+        self.cluster_type_combo = QComboBox()
+        self.cluster_type_combo.addItems(["关键词聚类", "用户行为聚类"])
+        self.cluster_type_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #bbb;
+                border-radius: 4px;
+                padding: 5px;
+                min-height: 30px;
+            }
+            QComboBox::drop-down {
+                border: 0px;
+            }
+            QComboBox::down-arrow {
+                image: url(assets/icons/down_arrow.png);
+                width: 12px;
+                height: 12px;
+            }
+        """)
+        self.cluster_type_combo.currentIndexChanged.connect(self.update_clustering_options)
+        params_layout.addWidget(type_label, 0, 0)
+        params_layout.addWidget(self.cluster_type_combo, 0, 1)
+        
+        # 聚类算法
+        algorithm_label = QLabel("聚类算法:")
+        algorithm_label.setStyleSheet("font-weight: bold;")
+        self.algorithm_combo = QComboBox()
+        self.algorithm_combo.addItems(["K-Means", "DBSCAN"])
+        self.algorithm_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #bbb;
+                border-radius: 4px;
+                padding: 5px;
+                min-height: 30px;
+            }
+            QComboBox::drop-down {
+                border: 0px;
+            }
+            QComboBox::down-arrow {
+                image: url(assets/icons/down_arrow.png);
+                width: 12px;
+                height: 12px;
+            }
+        """)
+        params_layout.addWidget(algorithm_label, 1, 0)
+        params_layout.addWidget(self.algorithm_combo, 1, 1)
+        
+        # 聚类数量
+        num_label = QLabel("聚类数量:")
+        num_label.setStyleSheet("font-weight: bold;")
+        self.cluster_num_spin = QSpinBox()
+        self.cluster_num_spin.setRange(2, 10)
+        self.cluster_num_spin.setValue(4)
+        self.cluster_num_spin.setStyleSheet("""
+            QSpinBox {
+                border: 1px solid #bbb;
+                border-radius: 4px;
+                padding: 5px;
+                min-height: 30px;
+            }
+        """)
+        params_layout.addWidget(num_label, 2, 0)
+        params_layout.addWidget(self.cluster_num_spin, 2, 1)
+        
+        # 关键词列表（仅在关键词聚类时显示）
+        self.keyword_label = QLabel("关键词列表(可选):")
+        self.keyword_label.setStyleSheet("font-weight: bold;")
+        self.cluster_keyword_input = QLineEdit()
+        self.cluster_keyword_input.setPlaceholderText("输入多个关键词，用英文逗号分隔，留空则使用所有关键词")
+        self.cluster_keyword_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #bbb;
+                border-radius: 4px;
+                padding: 8px;
+                min-height: 30px;
+            }
+        """)
+        params_layout.addWidget(self.keyword_label, 3, 0)
+        params_layout.addWidget(self.cluster_keyword_input, 3, 1)
+        
+        # 添加自动获取热门关键词按钮
+        self.get_hot_keywords_btn = QPushButton("获取热门关键词")
+        self.get_hot_keywords_btn.setToolTip("自动获取需求图谱中排名前5的热门关键词")
+        self.get_hot_keywords_btn.clicked.connect(self.get_hot_keywords_for_clustering)
+        self.get_hot_keywords_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 15px;
+                min-height: 35px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
+        params_layout.addWidget(self.get_hot_keywords_btn, 4, 0, 1, 2)
+        
+        # 添加说明文本
+        if self.cluster_type_combo.currentText() == "用户行为聚类":
+            info_text = "用户行为聚类: 基于用户的年龄、性别、兴趣偏好等特征进行分析，识别具有相似特性的用户群体，有助于精细营销和用户画像分析。"
+        else:
+            info_text = "关键词聚类: 根据关键词的搜索趋势、用户画像特征对关键词进行分类，发现具有相似特征的关键词组合，帮助理解热词。"
+        
+        self.clustering_info_label = QLabel(info_text)
+        self.clustering_info_label.setWordWrap(True)
+        self.clustering_info_label.setStyleSheet("color: #666; font-style: italic; padding: 5px;")
+        params_layout.addWidget(self.clustering_info_label, 5, 0, 1, 2)
+        
+        main_layout.addWidget(params_group)
+        
+        # 进度和操作区域
+        action_container = QWidget()
+        action_layout = QVBoxLayout(action_container)
+        action_layout.setContentsMargins(0, 0, 0, 0)
+        action_layout.setSpacing(10)
+        
+        # 进度条
+        self.clustering_progress = QProgressBar()
+        self.clustering_progress.setTextVisible(True)
+        self.clustering_progress.setFormat("%p% - %v")
+        self.clustering_progress.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #bbb;
+                border-radius: 4px;
+                text-align: center;
+                height: 25px;
+            }
+            QProgressBar::chunk {
+                background-color: #3f51b5;
+                border-radius: 4px;
+            }
+        """)
+        self.clustering_progress.hide()
+        action_layout.addWidget(self.clustering_progress)
+        
+        # 开始分析按钮
+        self.start_clustering_btn = QPushButton("开始聚类分析")
+        self.start_clustering_btn.clicked.connect(self.run_clustering_analysis)
+        self.start_clustering_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3f51b5;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 20px;
+                font-size: 16px;
+                font-weight: bold;
+                min-height: 40px;
+            }
+            QPushButton:hover {
+                background-color: #303f9f;
+            }
+            QPushButton:pressed {
+                background-color: #283593;
+            }
+        """)
+        action_layout.addWidget(self.start_clustering_btn)
+        
+        main_layout.addWidget(action_container)
+        
+        # 结果显示区域
+        self.cluster_result_container = QGroupBox("聚类结果")
+        self.cluster_result_container.setStyleSheet("""
+            QGroupBox {
+                font-size: 14px;
+                font-weight: bold;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                margin-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        self.cluster_result_container.hide()
+        result_layout = QVBoxLayout(self.cluster_result_container)
+        result_layout.setContentsMargins(15, 20, 15, 15)
+        
+        # 使用标签页组织不同的结果视图
+        self.cluster_result_tabs = QTabWidget()
+        self.cluster_result_tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: white;
+            }
+            QTabBar::tab {
+                background: #f0f0f0;
+                border: 1px solid #ddd;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                padding: 8px 12px;
+                min-width: 100px;
+            }
+            QTabBar::tab:selected {
+                background: white;
+                border-bottom: 1px solid white;
+            }
+            QTabBar::tab:hover {
+                background: #e0e0e0;
+            }
+        """)
+        
+        # 分组结果标签页
+        groups_tab = QWidget()
+        groups_layout = QVBoxLayout(groups_tab)
+        self.cluster_groups_text = QTextEdit()
+        self.cluster_groups_text.setReadOnly(True)
+        self.cluster_groups_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 10px;
+                font-family: 'Microsoft YaHei', Arial;
+                line-height: 1.5;
+            }
+        """)
+        groups_layout.addWidget(self.cluster_groups_text)
+        self.cluster_result_tabs.addTab(groups_tab, "聚类分组")
+        
+        # 可视化标签页
+        visual_tab = QWidget()
+        visual_layout = QVBoxLayout(visual_tab)
+        
+        # 添加滚动区域，以便在图表过大时可以滚动查看
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: white;
+            }
+            QScrollBar:vertical {
+                background: #f0f0f0;
+                width: 12px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #c0c0c0;
+                min-height: 20px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #a0a0a0;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar:horizontal {
+                background: #f0f0f0;
+                height: 12px;
+                margin: 0px;
+            }
+            QScrollBar::handle:horizontal {
+                background: #c0c0c0;
+                min-width: 20px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: #a0a0a0;
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+                width: 0px;
+            }
+        """)
+        
+        # 创建内容容器
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        
+        # 可视化标题
+        visualization_title = QLabel("聚类可视化结果")
+        visualization_title.setAlignment(Qt.AlignCenter)
+        visualization_title.setStyleSheet("""
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #3f51b5;
+        """)
+        scroll_layout.addWidget(visualization_title)
+        
+        # 添加WebEngineView
+        self.cluster_visual_view = QWebEngineView()
+        self.cluster_visual_view.setMinimumHeight(600)  # 设置最小高度
+        scroll_layout.addWidget(self.cluster_visual_view)
+        
+        # 添加说明文本
+        visualization_note = QLabel("提示: 可以使用鼠标滚轮或滚动条查看完整图表")
+        visualization_note.setAlignment(Qt.AlignCenter)
+        visualization_note.setStyleSheet("""
+            font-style: italic;
+            color: #666;
+            margin: 5px 0;
+        """)
+        scroll_layout.addWidget(visualization_note)
+        
+        # 设置内容到滚动区域
+        scroll_area.setWidget(scroll_content)
+        visual_layout.addWidget(scroll_area)
+        
+        self.cluster_result_tabs.addTab(visual_tab, "聚类可视化")
+        
+        # 洞察标签页
+        insights_tab = QWidget()
+        insights_layout = QVBoxLayout(insights_tab)
+        self.cluster_insights_text = QTextEdit()
+        self.cluster_insights_text.setReadOnly(True)
+        self.cluster_insights_text.setStyleSheet("""
+            QTextEdit {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 10px;
+                font-family: 'Microsoft YaHei', Arial;
+                line-height: 1.5;
+            }
+        """)
+        insights_layout.addWidget(self.cluster_insights_text)
+        self.cluster_result_tabs.addTab(insights_tab, "聚类洞察")
+        
+        result_layout.addWidget(self.cluster_result_tabs)
+        main_layout.addWidget(self.cluster_result_container)
+        
+        # 初始化聚类工具
+        self.clustering_utils = ClusteringUtils()
+        
+        # 更新界面选项
+        self.update_clustering_options()
+        
+        return clustering_page
+
+    def update_clustering_options(self):
+        """根据聚类类型更新界面选项"""
+        cluster_type = self.cluster_type_combo.currentText()
+        algorithm = self.algorithm_combo.currentText()
+        
+        # 更新描述文字
+        if cluster_type == "关键词聚类":
+            self.clustering_info_label.setText(
+                "关键词聚类: 根据关键词的搜索趋势、用户画像等特征对关键词进行分组，"
+                "发现具有相似特征的关键词集合，帮助理解市场细分。"
+            )
+            self.keyword_label.show()
+            self.cluster_keyword_input.show()
+        else:  # 用户行为聚类
+            self.clustering_info_label.setText(
+                "用户行为聚类: 基于用户的年龄、性别、兴趣偏好等特征进行分组，"
+                "识别具有相似行为模式的用户群体，有助于精准营销和用户画像分析。"
+            )
+            self.keyword_label.hide()
+            self.cluster_keyword_input.hide()
+        
+        # 更新算法相关选项
+        if algorithm == "DBSCAN":
+            self.cluster_num_spin.setRange(2, 5)
+            self.cluster_num_spin.setValue(2)
+        else:  # K-Means
+            self.cluster_num_spin.setRange(2, 10)
+            self.cluster_num_spin.setValue(3)
+
+    def run_clustering_analysis(self):
+        """执行聚类分析"""
+        try:
+            # 获取参数
+            cluster_type = self.cluster_type_combo.currentText()
+            algorithm = self.algorithm_combo.currentText()
+            cluster_num = self.cluster_num_spin.value()
+            
+            # 显示进度条
+            self.clustering_progress.setValue(0)
+            self.clustering_progress.setMaximum(0)  # 显示不确定的进度
+            self.clustering_progress.show()
+            self.start_clustering_btn.setEnabled(False)
+            
+            # 创建聚类线程
+            self.clustering_thread = ClusteringThread(
+                self.clustering_utils,
+                cluster_type,
+                algorithm,
+                cluster_num,
+                self.cluster_keyword_input.text() if cluster_type == "关键词聚类" else None
+            )
+            self.clustering_thread.progress_signal.connect(self.update_clustering_progress)
+            self.clustering_thread.finished_signal.connect(self.handle_clustering_result)
+            self.clustering_thread.start()
+            
+        except Exception as e:
+            logging.error(f"启动聚类分析失败: {str(e)}")
+            self.clustering_progress.hide()
+            self.start_clustering_btn.setEnabled(True)
+            self.show_message("错误", f"启动聚类分析失败: {str(e)}")
+
+    def update_clustering_progress(self, message):
+        """更新聚类进度信息"""
+        self.clustering_progress.setFormat(message)
+
+    def handle_clustering_result(self, success, result, message):
+        """处理聚类分析结果"""
+        self.clustering_progress.hide()
+        self.start_clustering_btn.setEnabled(True)
+        
+        if not success:
+            self.show_message("聚类分析失败", message)
+            return
+        
+        # 显示结果容器
+        self.cluster_result_container.show()
+        
+        # 更新聚类分组文本
+        clusters_text = ""
+        for cluster_id, items in result['clusters'].items():
+            clusters_text += f"<div style='margin-bottom:15px;'>"
+            clusters_text += f"<span style='font-weight:bold;color:#3f51b5;font-size:14px;'>聚类 {cluster_id}：</span>"
+            clusters_text += f"<span style='color:#666;'>({len(items)}个项目)</span><br>"
+            clusters_text += f"<span style='color:#333;'>{', '.join(items)}</span>"
+            clusters_text += f"</div>"
+        self.cluster_groups_text.setHtml(clusters_text)
+        
+        # 加载可视化图表
+        if 'visualization' in result and result['visualization']:
+            try:
+                # 直接加载HTML文件
+                html_path = result['visualization']
+                html_url = QUrl.fromLocalFile(html_path)
+                self.cluster_visual_view.load(html_url)
+                logging.info(f"成功加载聚类可视化HTML: {html_path}")
+            except Exception as e:
+                logging.error(f"加载可视化图表失败: {str(e)}")
+                self.cluster_visual_view.setHtml("<html><body><p>加载可视化图表失败</p></body></html>")
+        
+        # 更新分析洞察
+        insights = self.clustering_utils.generate_cluster_insights(result)
+        insights_html = "<div style='font-family:\"Microsoft YaHei\",Arial;line-height:1.6;'>"
+        
+        # 添加标题
+        insights_html += "<h2 style='color:#3f51b5;text-align:center;margin-bottom:20px;'>聚类分析洞察</h2>"
+        
+        # 添加洞察内容
+        for i, insight in enumerate(insights):
+            insights_html += f"<div style='background-color:{('#f9f9ff' if i % 2 == 0 else 'white')};padding:12px;border-radius:8px;margin-bottom:10px;'>"
+            insights_html += f"<span style='color:#333;'>• {insight}</span>"
+            insights_html += "</div>"
+        
+        insights_html += "</div>"
+        self.cluster_insights_text.setHtml(insights_html)
+        
+        # 切换到分组标签
+        self.cluster_result_tabs.setCurrentIndex(0)
+        
+        # 显示成功消息
+        self.show_message("聚类分析完成", "聚类分析已成功完成，请查看结果。")
+
+    def create_menu_bar(self):
+        """创建菜单栏"""
+        # 不显示菜单栏，保持之前的界面样式
+        pass
+        
+        # 旧的菜单栏代码注释掉，以备未来需要
+        """
+        self.menubar = QMenuBar(self)
+        self.setMenuBar(self.menubar)
+
+        # 文件菜单
+        file_menu = self.menubar.addMenu('文件')
+        
+        settings_action = QAction('设置', self)
+        settings_action.triggered.connect(self.show_settings_dialog)
+        file_menu.addAction(settings_action)
+        
+        export_action = QAction('导出数据', self)
+        export_action.triggered.connect(self.export_data)
+        file_menu.addAction(export_action)
+        
+        exit_action = QAction('退出', self)
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+        
+        # 工具菜单
+        tools_menu = self.menubar.addMenu('工具')
+        
+        batch_action = QAction('批量查询', self)
+        batch_action.triggered.connect(self.show_batch_query_dialog)
+        tools_menu.addAction(batch_action)
+        
+        cookie_action = QAction('Cookie管理', self)
+        cookie_action.triggered.connect(self.show_cookie_manager)
+        tools_menu.addAction(cookie_action)
+        
+        test_clustering_action = QAction('测试聚类功能', self)
+        test_clustering_action.triggered.connect(self.test_clustering_functionality)
+        tools_menu.addAction(test_clustering_action)
+        
+        # 帮助菜单
+        help_menu = self.menubar.addMenu('帮助')
+        
+        about_action = QAction('关于', self)
+        about_action.triggered.connect(self.show_about_dialog)
+        help_menu.addAction(about_action)
+        
+        help_action = QAction('使用帮助', self)
+        help_action.triggered.connect(self.show_help_dialog)
+        help_menu.addAction(help_action)
+        """
+
+    def test_clustering_functionality(self):
+        """测试聚类功能"""
+        try:
+            # 创建进度对话框
+            progress = QProgressDialog("正在进行聚类测试...", "取消", 0, 100, self)
+            progress.setWindowTitle("测试聚类功能")
+            progress.setWindowModality(Qt.WindowModal)
+            progress.setValue(0)
+            progress.show()
+            
+            # 步骤1: 生成测试数据
+            progress.setValue(10)
+            progress.setLabelText("正在生成测试数据...")
+            QCoreApplication.processEvents()
+            
+            result = self.clustering_utils.generate_sample_data(save_to_db=True)
+            if not result:
+                QMessageBox.warning(self, "测试失败", "生成测试数据失败，请查看日志")
+                progress.close()
+                return
+                
+            progress.setValue(30)
+            
+            # 步骤2: 准备聚类参数
+            progress.setLabelText("正在准备聚类数据...")
+            QCoreApplication.processEvents()
+            
+            # 准备聚类参数
+            parameters = {
+                "cluster_type": "keywords",  # 可以是 "keywords" 或 "users"
+                "algorithm": "kmeans",  # 可以是 "kmeans" 或 "dbscan"
+                "n_clusters": 3,  # 聚类数目
+                "keywords": [
+                    "老年健康", "养老中心", "老年医疗", "养老保险", "老年活动",
+                    "老年人饮食", "老年人运动", "中老年服装", "老年大学", "老年旅游"
+                ],
+                "date_range": ["2023-01-01", "2023-12-31"],
+                "include_trend": True,
+                "include_crowd": True,
+                "include_demand": True
+            }
+            
+            progress.setValue(40)
+            
+            # 步骤3: 执行聚类分析
+            progress.setLabelText("正在执行聚类分析...")
+            QCoreApplication.processEvents()
+            
+            # 创建一个聚类线程
+            self.test_clustering_thread = ClusteringThread(
+                self.clustering_utils,
+                "关键词聚类",  # 聚类类型
+                "kmeans",    # 算法类型
+                3,           # 聚类数量
+                ",".join(parameters["keywords"])  # 关键词列表
+            )
+            self.test_clustering_thread.progress_signal.connect(
+                lambda message: progress.setLabelText(message)
+            )
+            self.test_clustering_thread.finished_signal.connect(
+                lambda success, result, message: self.handle_test_clustering_results(result, progress)
+            )
+            self.test_clustering_thread.start()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"测试聚类功能时发生错误：{str(e)}")
+            progress.close()
+            
+    def handle_test_clustering_results(self, results, progress):
+        """处理聚类测试结果"""
+        try:
+            progress.setValue(90)
+            progress.setLabelText("处理聚类结果...")
+            QCoreApplication.processEvents()
+            
+            if not results or "error" in results:
+                error_msg = results.get("error", "未知错误") if results else "聚类结果为空"
+                QMessageBox.warning(self, "聚类测试", f"聚类分析过程出现问题：{error_msg}")
+                progress.close()
+                return
+                
+            # 获取洞察
+            insights = self.clustering_utils.generate_cluster_insights(results)
+            
+            # 创建结果报告
+            report = "## 聚类测试结果\n\n"
+            report += "### 聚类洞察\n"
+            for insight in insights:
+                report += f"- {insight}\n"
+                
+            report += "\n### 聚类详情\n"
+            clusters = results.get('clusters', {})
+            for cluster_id, items in clusters.items():
+                report += f"\n**聚类 {cluster_id}** ({len(items)}个项目):\n"
+                for item in items[:10]:  # 只显示前10个
+                    report += f"- {item}\n"
+                if len(items) > 10:
+                    report += f"- ... 还有{len(items) - 10}个项目\n"
+            
+            # 生成图表路径
+            if "visualization" in results:
+                report += f"\n### 聚类可视化\n"
+                report += f"![聚类可视化]({results['visualization']})\n"
+            
+            # 使用临时文件保存报告
+            import tempfile
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.md', mode='w', encoding='utf-8') as tmp:
+                tmp.write(report)
+                report_path = tmp.name
+                
+            # 完成进度
+            progress.setValue(100)
+            progress.close()
+            
+            # 显示结果
+            msg_box = QMessageBox(self)
+            msg_box.setWindowTitle("聚类测试完成")
+            msg_box.setText("聚类分析已完成，结果保存在临时文件中。")
+            msg_box.setDetailedText(report)
+            msg_box.setStandardButtons(QMessageBox.Ok)
+            
+            # 添加打开报告按钮
+            open_button = msg_box.addButton("查看详细报告", QMessageBox.ActionRole)
+            open_button.clicked.connect(lambda: self.open_file(report_path))
+            
+            msg_box.exec_()
+            
+        except Exception as e:
+            progress.close()
+            QMessageBox.critical(self, "错误", f"处理聚类结果时发生错误：{str(e)}")
+            
+    def open_file(self, file_path):
+        """使用系统默认程序打开文件"""
+        import os
+        import platform
+        
+        try:
+            if platform.system() == 'Darwin':  # macOS
+                os.system(f'open "{file_path}"')
+            elif platform.system() == 'Windows':  # Windows
+                os.system(f'start "" "{file_path}"')
+            else:  # Linux等
+                os.system(f'xdg-open "{file_path}"')
+        except Exception as e:
+            QMessageBox.warning(self, "打开文件失败", f"无法打开文件: {str(e)}")
+    
+    def closeEvent(self, event):
+        """窗口关闭事件处理"""
+        try:
+            # 停止正在运行的线程
+            if hasattr(self, 'collection_thread') and self.collection_thread and self.collection_thread.isRunning():
+                self.collection_thread.stop()
+                self.collection_thread.wait()
+                
+            # 停止聚类分析线程
+            if hasattr(self, 'clustering_thread') and self.clustering_thread and self.clustering_thread.isRunning():
+                self.clustering_thread.stop()
+                self.clustering_thread.wait()
+
+            # 停止天气更新定时器
+            if hasattr(self, 'weather_timer'):
+                self.weather_timer.stop()
+
+            # 保存当前设置
+            self.save_settings()
+        except Exception as e:
+            logging.error(f"关闭窗口时发生错误: {str(e)}")
+        super().closeEvent(event)
+
+    def show_settings_dialog(self):
+        """显示设置对话框"""
+        settings_dialog = QDialog(self)
+        settings_dialog.setWindowTitle("设置")
+        settings_dialog.setMinimumSize(400, 300)
+
+        layout = QVBoxLayout(settings_dialog)
+
+        # 添加设置选项
+        self.add_settings_options(layout)
+
+        # 添加保存按钮
+        save_button = QPushButton("保存")
+        save_button.clicked.connect(settings_dialog.accept)
+        layout.addWidget(save_button)
+
+        settings_dialog.exec_()
+
+    def add_settings_options(self, layout):
+        """添加设置选项到对话框"""
+        # 添加天气更新频率设置
+        self.add_weather_settings(layout)
+
+        # 添加字体大小设置
+        self.add_font_size_settings(layout)
+
+        # 添加主题设置
+        self.add_theme_settings(layout)
+
+        # 添加数据缓存设置
+        self.add_cache_settings(layout)
+
+        # 添加关于系统设置
+        self.add_about_settings(layout)
+
+    def add_weather_settings(self, layout):
+        """添加天气更新频率设置"""
+        weather_group = QGroupBox("天气更新频率")
+        weather_group.setStyleSheet("QGroupBox { margin-top: 15px; }")
+
+        weather_layout = QVBoxLayout(weather_group)
+
+        weather_label = QLabel("更新频率:")
+        weather_combo = QComboBox()
+        weather_combo.addItems(["10分钟", "30分钟", "1小时", "2小时"])
+        weather_combo.setCurrentText(self.findChild(QComboBox, 'weather_combo').currentText())
+        weather_combo.currentTextChanged.connect(self.update_weather_interval)
+        weather_layout.addWidget(weather_label)
+        weather_layout.addWidget(weather_combo)
+
+        layout.addWidget(weather_group)
+
+    def add_font_size_settings(self, layout):
+        """添加字体大小设置"""
+        font_size_group = QGroupBox("界面字体大小")
+        font_size_group.setStyleSheet("QGroupBox { margin-top: 15px; }")
+
+        font_size_layout = QVBoxLayout(font_size_group)
+
+        font_size_label = QLabel("字体大小:")
+        font_size_spin = QSpinBox()
+        font_size_spin.setRange(12, 20)
+        font_size_spin.setValue(self.findChild(QSpinBox, 'font_size_spin').value())
+        font_size_spin.valueChanged.connect(self.update_font_size)
+        font_size_layout.addWidget(font_size_label)
+        font_size_layout.addWidget(font_size_spin)
+
+        layout.addWidget(font_size_group)
+
+    def add_theme_settings(self, layout):
+        """添加主题设置"""
+        theme_group = QGroupBox("界面主题")
+        theme_group.setStyleSheet("QGroupBox { margin-top: 15px; }")
+
+        theme_layout = QVBoxLayout(theme_group)
+
+        theme_label = QLabel("主题:")
+        theme_combo = QComboBox()
+        theme_combo.addItems(["深蓝主题", "暗夜主题", "浅色主题"])
+        theme_combo.setCurrentText(self.findChild(QComboBox, 'theme_combo').currentText())
+        theme_combo.currentTextChanged.connect(self.update_theme)
+        theme_layout.addWidget(theme_label)
+        theme_layout.addWidget(theme_combo)
+
+        layout.addWidget(theme_group)
+
+    def add_cache_settings(self, layout):
+        """添加数据缓存设置"""
+        cache_group = QGroupBox("数据缓存")
+        cache_group.setStyleSheet("QGroupBox { margin-top: 15px; }")
+
+        cache_layout = QVBoxLayout(cache_group)
+
+        clear_cache_btn = QPushButton("清除缓存")
+        clear_cache_btn.clicked.connect(self.clear_cache)
+        cache_layout.addWidget(clear_cache_btn)
+
+        layout.addWidget(cache_group)
+
+    def add_about_settings(self, layout):
+        """添加关于系统设置"""
+        about_group = QGroupBox("关于系统")
+        about_group.setStyleSheet("QGroupBox { margin-top: 15px; }")
+
+        about_layout = QVBoxLayout(about_group)
+
+        about_label = QLabel("关于系统:")
+        about_btn = QPushButton("查看详情")
+        about_btn.clicked.connect(self.show_about)
+        about_layout.addWidget(about_label)
+        about_layout.addWidget(about_btn)
+
+        layout.addWidget(about_group)
+
+    def export_data(self):
+        """导出数据"""
+        # 实现导出数据的逻辑
+        pass
+
+    def show_batch_query_dialog(self):
+        """显示批量查询对话框"""
+        # 实现批量查询的逻辑
+        pass
+
+    def show_cookie_manager(self):
+        """显示Cookie管理对话框"""
+        # 实现Cookie管理的逻辑
+        pass
+
+    def show_about_dialog(self):
+        """显示关于对话框"""
+        about_dialog = QDialog(self)
+        about_dialog.setWindowTitle("关于")
+        about_dialog.setMinimumSize(400, 300)
+
+        layout = QVBoxLayout(about_dialog)
+
+        about_label = QLabel("关于系统:")
+        about_text = """
+        <p>版本：1.0.0</p>
+        <p>开发团队：朝阳团队</p>
+        <p>联系方式：1402353365@qq.com</p>
+        <p>系统简介：本系统用于收集、分析和展示养老需求数据，帮助相关机构更好地了解和满足老年人的需求。</p>
+        """
+        about_layout = QVBoxLayout()
+        about_layout.addWidget(about_label)
+        about_layout.addWidget(QLabel(about_text))
+        layout.addLayout(about_layout)
+
+        about_dialog.exec_()
+
+    def show_help_dialog(self):
+        """显示帮助对话框"""
+        help_dialog = QDialog(self)
+        help_dialog.setWindowTitle("使用帮助")
+        help_dialog.setMinimumSize(400, 300)
+
+        layout = QVBoxLayout(help_dialog)
+
+        help_label = QLabel("使用说明:")
+        help_text = """
+        <p>1. 数据采集：点击"数据采集"按钮开始收集养老需求数据。</p>
+        <p>2. 聚类分析：点击"聚类分析"按钮对关键词和用户行为进行聚类。</p>
+        <p>3. 数据分析：点击"数据分析"按钮分析已收集的数据。</p>
+        """
+        help_layout = QVBoxLayout()
+        help_layout.addWidget(help_label)
+        help_layout.addWidget(QLabel(help_text))
+        layout.addLayout(help_layout)
+
+        help_dialog.exec_()
+
+    def generate_clustering_test_data(self):
+        """生成聚类测试数据"""
+        try:
+            # 创建进度对话框
+            progress = QProgressDialog("正在生成聚类测试数据...", "取消", 0, 100, self)
+            progress.setWindowTitle("生成测试数据")
+            progress.setWindowModality(Qt.WindowModal)
+            progress.setValue(0)
+            progress.show()
+            
+            # 开始生成测试数据
+            progress.setValue(10)
+            QCoreApplication.processEvents()
+            
+            # 调用聚类工具生成样本数据
+            result = self.clustering_utils.generate_sample_data(save_to_db=True)
+            
+            progress.setValue(90)
+            QCoreApplication.processEvents()
+            
+            # 显示结果
+            if result:
+                progress.setValue(100)
+                QMessageBox.information(self, "成功", "测试数据生成成功，现在可以进行聚类分析。")
+            else:
+                QMessageBox.warning(self, "失败", "测试数据生成失败，请查看日志了解详情。")
+            
+            progress.close()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"生成测试数据时发生错误：{str(e)}")
+            logging.error(f"生成测试数据错误: {str(e)}")
+            traceback.print_exc()
+
+    def get_hot_keywords_for_clustering(self):
+        """获取热门关键词用于聚类分析"""
+        try:
+            # 显示进度对话框
+            progress = QProgressDialog("正在获取热门关键词数据...", "取消", 0, 100, self)
+            progress.setWindowTitle("获取热门关键词")
+            progress.setWindowModality(Qt.WindowModal)
+            progress.setValue(10)
+            
+            # 连接数据库
+            conn = db_utils.get_connection()
+            if not conn:
+                QMessageBox.critical(self, "错误", "无法连接到数据库")
+                progress.close()
+                return
+            
+            cursor = conn.cursor()
+            
+            # 先让用户输入一个基础关键词
+            base_keyword, ok = QInputDialog.getText(
+                self, "输入基础关键词", 
+                "请输入一个基础关键词，系统将获取与之相关的热门关键词:",
+                QLineEdit.Normal, ""
+            )
+            
+            if not ok or not base_keyword.strip():
+                progress.close()
+                return
+            
+            base_keyword = base_keyword.strip()
+            progress.setValue(30)
+            
+            # 查询需求图谱中与当前关键词相关的排名前5的关键词
+            try:
+                query = """
+                    SELECT word FROM human_request_data 
+                    WHERE keyword = %s
+                    ORDER BY pv DESC
+                    LIMIT 5
+                """
+                cursor.execute(query, (base_keyword,))
+                related_keywords = [row[0] for row in cursor.fetchall()]
+                
+                progress.setValue(60)
+                
+                # 如果没有找到相关关键词，显示提示
+                if not related_keywords:
+                    QMessageBox.information(self, "提示", "没有找到相关的热门关键词，请先进行需求图谱数据采集")
+                    progress.close()
+                    cursor.close()
+                    conn.close()
+                    return
+                
+                # 将当前关键词添加到列表中
+                keywords = [base_keyword] + related_keywords
+                
+                # 确保有足够的数据进行聚类
+                if len(keywords) < 3:
+                    QMessageBox.warning(self, "提示", f"找到的关键词数量({len(keywords)})不足以进行有效聚类，请先进行数据采集")
+                    progress.close()
+                    cursor.close()
+                    conn.close()
+                    return
+                
+                # 为这些关键词采集数据(如果需要)
+                progress.setValue(70)
+                progress.setLabelText("正在检查关键词数据...")
+                
+                # 检查每个关键词是否有足够的数据
+                insufficient_data = []
+                for keyword in keywords:
+                    # 检查指数趋势数据
+                    cursor.execute("SELECT COUNT(*) FROM baidu_index_trends WHERE keyword = %s", (keyword,))
+                    count = cursor.fetchone()[0]
+                    
+                    # 检查人群画像数据
+                    cursor.execute("SELECT COUNT(*) FROM crowd_age_data WHERE keyword = %s", (keyword,))
+                    age_count = cursor.fetchone()[0]
+                    
+                    if count < 5 or age_count < 1:
+                        insufficient_data.append(keyword)
+                
+                progress.setValue(90)
+                
+                # 关闭数据库连接
+                cursor.close()
+                conn.close()
+                
+                # 如果有关键词缺少数据，提示用户
+                if insufficient_data:
+                    insufficient_str = ", ".join(insufficient_data)
+                    msg_box = QMessageBox(self)
+                    msg_box.setWindowTitle("数据不足")
+                    msg_box.setText(f"以下关键词缺少足够的数据进行聚类分析:\n{insufficient_str}")
+                    msg_box.setInformativeText("是否要自动采集这些关键词的数据?")
+                    msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                    msg_box.setDefaultButton(QMessageBox.Yes)
+                    
+                    if msg_box.exec_() == QMessageBox.Yes:
+                        # 这里可以添加自动采集数据的代码
+                        progress.close()
+                        self.batch_collect_keyword_data(insufficient_data)
+                        return
+                
+                # 将关键词列表填入聚类关键词输入框
+                self.cluster_keyword_input.setText(", ".join(keywords))
+                
+                progress.setValue(100)
+                progress.close()
+                
+                QMessageBox.information(self, "完成", f"已获取{len(keywords)}个热门关键词用于聚类分析")
+                
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"查询热门关键词失败: {str(e)}")
+                logging.error(f"查询热门关键词失败: {str(e)}")
+                progress.close()
+                
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"获取热门关键词时发生错误: {str(e)}")
+            logging.error(f"获取热门关键词错误: {str(e)}")
+            traceback.print_exc()
+
+    def batch_collect_keyword_data(self, keywords):
+        """批量采集关键词数据"""
+        try:
+            # 创建进度对话框
+            progress = QProgressDialog("正在采集关键词数据...", "取消", 0, len(keywords) * 3, self)
+            progress.setWindowTitle("批量数据采集")
+            progress.setWindowModality(Qt.WindowModal)
+            progress.show()
+            
+            # 记录采集成功的关键词
+            success_keywords = []
+            
+            for i, keyword in enumerate(keywords):
+                if progress.wasCanceled():
+                    break
+                    
+                progress.setValue(i * 3)
+                progress.setLabelText(f"正在采集关键词 '{keyword}' 的指数趋势...")
+                
+                # 采集指数趋势
+                try:
+                    result = get_trend_utils(self.username, keyword, 0, "全国")
+                    if not result:
+                        continue
+                except Exception as e:
+                    logging.error(f"采集 '{keyword}' 趋势数据失败: {str(e)}")
+                    continue
+                    
+                progress.setValue(i * 3 + 1)
+                progress.setLabelText(f"正在采集关键词 '{keyword}' 的人群画像...")
+                
+                # 采集人群画像
+                try:
+                    from utils.get_crowd_portrait_utils import get_crowd_portrait_data
+                    base_dir = os.path.dirname(os.path.dirname(__file__))
+                    success = get_crowd_portrait_data(keyword, base_dir)
+                    if not success:
+                        continue
+                except Exception as e:
+                    logging.error(f"采集 '{keyword}' 人群画像失败: {str(e)}")
+                    continue
+                    
+                progress.setValue(i * 3 + 2)
+                progress.setLabelText(f"正在采集关键词 '{keyword}' 的需求图谱...")
+                
+                # 采集需求图谱
+                try:
+                    from utils.get_huamn_requestion_utils import get_human_request_data
+                    success = get_human_request_data(keyword, self.username)
+                    if not success:
+                        continue
+                except Exception as e:
+                    logging.error(f"采集 '{keyword}' 需求图谱失败: {str(e)}")
+                    continue
+                    
+                # 如果所有数据都采集成功，将关键词添加到成功列表
+                success_keywords.append(keyword)
+                
+            progress.setValue(len(keywords) * 3)
+            
+            # 更新关键词输入框
+            if success_keywords:
+                current_text = self.cluster_keyword_input.text().strip()
+                keywords_to_add = ", ".join(success_keywords)
+                
+                if current_text:
+                    self.cluster_keyword_input.setText(f"{current_text}, {keywords_to_add}")
+                else:
+                    self.cluster_keyword_input.setText(keywords_to_add)
+                    
+                QMessageBox.information(self, "完成", f"成功采集了{len(success_keywords)}个关键词的数据，可以进行聚类分析")
+            else:
+                QMessageBox.warning(self, "警告", "没有成功采集任何关键词的数据")
+                
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"批量采集关键词数据时发生错误: {str(e)}")
+            logging.error(f"批量采集关键词数据错误: {str(e)}")
+            traceback.print_exc()
+
+class ClusteringThread(QThread):
+    """聚类分析线程类"""
+    progress_signal = pyqtSignal(str)
+    finished_signal = pyqtSignal(bool, dict, str)
+
+    def __init__(self, clustering_utils, cluster_type, algorithm, cluster_num, keywords=None):
+        super().__init__()
+        self.clustering_utils = clustering_utils
+        self.cluster_type = cluster_type
+        self.algorithm = algorithm
+        self.cluster_num = cluster_num
+        self.keywords = keywords
+        self.stopped = False
+        
+    def run(self):
+        """线程执行聚类分析"""
+        try:
+            self.progress_signal.emit("准备聚类分析...")
+            
+            # 处理关键词参数
+            keywords_list = None
+            if self.keywords and self.cluster_type == "关键词聚类":
+                # 解析关键词，去除空白
+                keywords_list = [k.strip() for k in self.keywords.split(',') if k.strip()]
+                if not keywords_list:
+                    keywords_list = None
+            
+            # 根据类型选择聚类方法
+            if self.cluster_type == "关键词聚类":
+                self.progress_signal.emit("正在对关键词进行聚类分析...")
+                result, message = self.clustering_utils.keyword_clustering(
+                    keywords=keywords_list, 
+                    n_clusters=self.cluster_num,
+                    method='dbscan' if self.algorithm == "DBSCAN" else 'kmeans'
+                )
+            else:  # 用户行为聚类
+                self.progress_signal.emit("正在对用户行为进行聚类分析...")
+                result, message = self.clustering_utils.user_behavior_clustering(
+                    n_clusters=self.cluster_num
+                )
+                
+            # 检查结果
+            if result is not None:
+                self.progress_signal.emit("聚类分析完成，正在处理结果...")
+                self.finished_signal.emit(True, result, message)
+            else:
+                self.progress_signal.emit(f"聚类分析失败: {message}")
+                self.finished_signal.emit(False, {}, message)
+                
+        except Exception as e:
+            error_msg = f"聚类分析过程中发生错误: {str(e)}"
+            logging.error(error_msg)
+            traceback.print_exc()
+            self.finished_signal.emit(False, {}, error_msg)
+    
+    def stop(self):
+        """停止线程"""
+        self.stopped = True
