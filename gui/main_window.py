@@ -1172,12 +1172,12 @@ class WelcomeWindow(QMainWindow):
         return page
 
     def create_settings_page(self):
-        """创建系统设置页面"""
+        """创建设置页面"""
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setSpacing(20)
 
-        # 添加设置页面标题
+        # 创建标题
         title_label = QLabel("系统设置")
         title_label.setFont(QFont("Microsoft YaHei", 24, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
@@ -1191,36 +1191,97 @@ class WelcomeWindow(QMainWindow):
         """)
         layout.addWidget(title_label)
 
-        # 创建设置选项容器
-        settings_container = QFrame()
-        settings_container.setStyleSheet("""
-            QFrame {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 15px;
-                padding: 20px;
-            }
-            QLabel {
-                color: white;
-                font-size: 14px;
-            }
+        # 创建设置容器
+        settings_container = QWidget()
+        settings_layout = QVBoxLayout(settings_container)
+        settings_layout.setSpacing(20)
+
+        # 添加清空数据按钮
+        clear_data_btn = QPushButton("清空数据表")
+        clear_data_btn.setStyleSheet("""
             QPushButton {
-                background-color: rgba(255, 255, 255, 0.2);
-                border: 2px solid white;
-                border-radius: 8px;
+                background-color: rgba(244, 67, 54, 0.8);
                 color: white;
-                padding: 8px 15px;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
                 font-size: 14px;
+                min-width: 150px;
             }
             QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.3);
+                background-color: rgba(244, 67, 54, 1);
             }
-            QComboBox {
-                background-color: rgba(255, 255, 255, 0.2);
-                border: 2px solid white;
-                border-radius: 8px;
+        """)
+        clear_data_btn.clicked.connect(self.clear_data_tables)
+        settings_layout.addWidget(clear_data_btn)
+
+        # 添加天气更新间隔设置
+        weather_group = QGroupBox("天气更新设置")
+        weather_layout = QVBoxLayout(weather_group)
+        
+        weather_interval_label = QLabel("更新间隔（分钟）:")
+        weather_interval_label.setStyleSheet("color: white;")
+        weather_layout.addWidget(weather_interval_label)
+        
+        weather_interval_spin = QSpinBox()
+        weather_interval_spin.setRange(1, 60)
+        weather_interval_spin.setValue(30)
+        weather_interval_spin.setStyleSheet("""
+            QSpinBox {
+                background-color: rgba(255, 255, 255, 0.1);
                 color: white;
-                padding: 8px;
-                min-width: 150px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 5px;
+                padding: 5px;
+            }
+        """)
+        weather_interval_spin.valueChanged.connect(self.update_weather_interval)
+        weather_layout.addWidget(weather_interval_spin)
+        
+        settings_layout.addWidget(weather_group)
+
+        # 添加字体大小设置
+        font_group = QGroupBox("字体大小设置")
+        font_layout = QVBoxLayout(font_group)
+        
+        font_size_label = QLabel("字体大小:")
+        font_size_label.setStyleSheet("color: white;")
+        font_layout.addWidget(font_size_label)
+        
+        font_size_spin = QSpinBox()
+        font_size_spin.setRange(8, 20)
+        font_size_spin.setValue(12)
+        font_size_spin.setStyleSheet("""
+            QSpinBox {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 5px;
+                padding: 5px;
+            }
+        """)
+        font_size_spin.valueChanged.connect(self.update_font_size)
+        font_layout.addWidget(font_size_spin)
+        
+        settings_layout.addWidget(font_group)
+
+        # 添加主题设置
+        theme_group = QGroupBox("主题设置")
+        theme_layout = QVBoxLayout(theme_group)
+        
+        theme_label = QLabel("选择主题:")
+        theme_label.setStyleSheet("color: white;")
+        theme_layout.addWidget(theme_label)
+        
+        theme_combo = QComboBox()
+        theme_combo.addItems(["深色主题", "浅色主题"])
+        theme_combo.setStyleSheet("""
+            QComboBox {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 5px;
+                padding: 5px;
             }
             QComboBox::drop-down {
                 border: none;
@@ -1230,78 +1291,60 @@ class WelcomeWindow(QMainWindow):
                 width: 12px;
                 height: 12px;
             }
-            QSpinBox {
+        """)
+        theme_combo.currentTextChanged.connect(self.update_theme)
+        theme_layout.addWidget(theme_combo)
+        
+        settings_layout.addWidget(theme_group)
+
+        # 添加数据缓存设置
+        cache_group = QGroupBox("数据缓存设置")
+        cache_layout = QVBoxLayout(cache_group)
+        
+        clear_cache_btn = QPushButton("清除缓存")
+        clear_cache_btn.setStyleSheet("""
+            QPushButton {
                 background-color: rgba(255, 255, 255, 0.2);
-                border: 2px solid white;
-                border-radius: 8px;
                 color: white;
-                padding: 8px;
-                min-width: 80px;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
+                min-width: 150px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.3);
             }
         """)
-
-        settings_layout = QVBoxLayout(settings_container)
-        settings_layout.setSpacing(15)
-
-        # 1. 天气更新频率设置
-        weather_group = QHBoxLayout()
-        weather_label = QLabel("天气更新频率：")
-        weather_combo = QComboBox()
-        weather_combo.setObjectName('weather_combo')  # 设置对象名称
-        weather_combo.addItems(["10分钟", "30分钟", "1小时", "2小时"])
-        weather_combo.setCurrentText("30分钟")
-        weather_combo.currentTextChanged.connect(self.update_weather_interval)
-        weather_group.addWidget(weather_label)
-        weather_group.addWidget(weather_combo)
-        weather_group.addStretch()
-        settings_layout.addLayout(weather_group)
-
-        # 2. 字体大小设置
-        font_group = QHBoxLayout()
-        font_label = QLabel("界面字体大小：")
-        font_size_spin = QSpinBox()
-        font_size_spin.setObjectName('font_size_spin')  # 设置对象名称
-        font_size_spin.setRange(12, 20)
-        font_size_spin.setValue(14)
-        font_size_spin.valueChanged.connect(self.update_font_size)
-        font_group.addWidget(font_label)
-        font_group.addWidget(font_size_spin)
-        font_group.addStretch()
-        settings_layout.addLayout(font_group)
-
-        # 3. 主题设置
-        theme_group = QHBoxLayout()
-        theme_label = QLabel("界面主题：")
-        theme_combo = QComboBox()
-        theme_combo.setObjectName('theme_combo')  # 设置对象名称
-        theme_combo.addItems(["深蓝主题", "暗夜主题", "浅色主题"])
-        theme_combo.currentTextChanged.connect(self.update_theme)
-        theme_group.addWidget(theme_label)
-        theme_group.addWidget(theme_combo)
-        theme_group.addStretch()
-        settings_layout.addLayout(theme_group)
-
-        # 4. 数据缓存设置
-        cache_group = QHBoxLayout()
-        cache_label = QLabel("数据缓存：")
-        clear_cache_btn = QPushButton("清除缓存")
         clear_cache_btn.clicked.connect(self.clear_cache)
-        cache_group.addWidget(cache_label)
-        cache_group.addWidget(clear_cache_btn)
-        cache_group.addStretch()
-        settings_layout.addLayout(cache_group)
+        cache_layout.addWidget(clear_cache_btn)
+        
+        settings_layout.addWidget(cache_group)
 
-        # 5. 关于系统
-        about_group = QHBoxLayout()
-        about_label = QLabel("关于系统：")
-        about_btn = QPushButton("查看详情")
+        # 添加团队信息设置
+        team_group = QGroupBox("团队信息")
+        team_layout = QVBoxLayout(team_group)
+        
+        about_btn = QPushButton("查看团队信息")
+        about_btn.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(255, 255, 255, 0.2);
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
+                min-width: 150px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.3);
+            }
+        """)
         about_btn.clicked.connect(self.show_about)
-        about_group.addWidget(about_label)
-        about_group.addWidget(about_btn)
-        about_group.addStretch()
-        settings_layout.addLayout(about_group)
+        team_layout.addWidget(about_btn)
+        
+        settings_layout.addWidget(team_group)
 
-        # 添加设置容器到主布局
         layout.addWidget(settings_container)
         layout.addStretch()
 
@@ -1309,6 +1352,51 @@ class WelcomeWindow(QMainWindow):
         self.load_settings()
 
         return page
+
+    def clear_data_tables(self):
+        """清空数据表内容"""
+        try:
+            # 显示确认对话框
+            reply = QMessageBox.question(
+                self,
+                "确认清空",
+                "确定要清空所有数据表吗？此操作不可恢复！\n（area_codes、users、cookies表除外）",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+
+            if reply == QMessageBox.Yes:
+                # 连接数据库
+                connection = db_utils.get_connection()
+                cursor = connection.cursor()
+
+                # 获取所有表名
+                cursor.execute("SHOW TABLES")
+                tables = [table[0] for table in cursor.fetchall()]
+
+                # 需要保留的表
+                protected_tables = ['area_codes', 'users', 'cookies']
+
+                # 清空每个表
+                for table in tables:
+                    if table not in protected_tables:
+                        try:
+                            cursor.execute(f"TRUNCATE TABLE {table}")
+                            logging.info(f"已清空表: {table}")
+                        except Exception as e:
+                            logging.error(f"清空表 {table} 失败: {str(e)}")
+
+                # 提交更改
+                connection.commit()
+                cursor.close()
+                connection.close()
+
+                QMessageBox.information(self, "成功", "数据表已清空")
+                logging.info("所有数据表已清空")
+
+        except Exception as e:
+            logging.error(f"清空数据表失败: {str(e)}")
+            QMessageBox.warning(self, "错误", f"清空数据表失败: {str(e)}")
 
     def show_message(self, title, text):
         """显示统一样式的消息框"""
