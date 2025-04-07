@@ -20,6 +20,7 @@ from config.city_codes import get_all_regions, get_region_provinces, get_provinc
 from pyecharts import options as opts
 from pyecharts.charts import Line, Bar, Pie, Map, Graph, Page
 from utils import db_utils
+from utils.db_utils import DatabaseConnection
 from gui.data_display_window import DataDisplayWindow
 import random
 import time
@@ -1290,8 +1291,19 @@ class WelcomeWindow(QMainWindow):
         cache_group.addWidget(clear_cache_btn)
         cache_group.addStretch()
         settings_layout.addLayout(cache_group)
+        
+        # 5. 数据库清空功能
+        db_clear_group = QHBoxLayout()
+        db_clear_label = QLabel("数据库维护：")
+        clear_db_btn = QPushButton("清空数据库")
+        clear_db_btn.setToolTip("清空所有数据表，但保留用户、地区码和cookies数据")
+        clear_db_btn.clicked.connect(self.clear_database)
+        db_clear_group.addWidget(db_clear_label)
+        db_clear_group.addWidget(clear_db_btn)
+        db_clear_group.addStretch()
+        settings_layout.addLayout(db_clear_group)
 
-        # 5. 关于系统
+        # 6. 关于系统
         about_group = QHBoxLayout()
         about_label = QLabel("关于系统：")
         about_btn = QPushButton("查看详情")
@@ -1482,7 +1494,7 @@ class WelcomeWindow(QMainWindow):
             if not keywords:
                 cursor.execute("SELECT DISTINCT keyword FROM crowd_region_data ORDER BY keyword")
                 keywords = [row[0] for row in cursor.fetchall()]
-                
+
             # 如果还是没有关键词，再尝试另一个表
             if not keywords:
                 cursor.execute("SELECT DISTINCT keyword FROM human_request_data ORDER BY keyword")
@@ -1718,28 +1730,70 @@ class WelcomeWindow(QMainWindow):
                 conn.close()
 
     def clear_cache(self):
-        """清除数据缓存"""
+        """清除缓存数据"""
         try:
-            if os.path.exists(self.cache_dir):
-                cleared = False
-                for file in os.listdir(self.cache_dir):
-                    file_path = os.path.join(self.cache_dir, file)
-                    try:
-                        if os.path.isfile(file_path):
-                            os.unlink(file_path)
-                            cleared = True
-                    except Exception as e:
-                        logging.error(f"删除缓存文件失败 {file_path}: {str(e)}")
-
-                if cleared:
-                    self.show_message("清理成功", "数据缓存已清除")
-                else:
-                    self.show_message("提示", "缓存目录为空")
+            # 清除缓存文件夹
+            cache_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'cache')
+            if os.path.exists(cache_path):
+                for filename in os.listdir(cache_path):
+                    file_path = os.path.join(cache_path, filename)
+                    if os.path.isfile(file_path):
+                        os.remove(file_path)
+                self.show_message("清除成功", "缓存数据已成功清除！")
             else:
-                self.show_message("提示", "缓存目录不存在")
+                self.show_message("提示", "缓存目录不存在！")
         except Exception as e:
             logging.error(f"清除缓存失败: {str(e)}")
-            QMessageBox.warning(self, "清理失败", "清除缓存失败")
+            self.show_message("清除失败", f"清除缓存时发生错误: {str(e)}")
+            
+    def clear_database(self):
+        """清空数据库表，但保留用户、地区码和cookies表"""
+        # 确认对话框
+        confirm = QMessageBox()
+        confirm.setIcon(QMessageBox.Warning)
+        confirm.setWindowTitle("确认操作")
+        confirm.setText("此操作将清空所有数据表，但会保留用户信息、地区码和cookies数据。")
+        confirm.setInformativeText("此操作不可恢复，确定要继续吗？")
+        confirm.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        confirm.setDefaultButton(QMessageBox.No)
+        confirm.setStyleSheet("""
+            QMessageBox {
+                background-color: white;
+            }
+            QMessageBox QLabel {
+                color: #333333;
+                font-size: 14px;
+                font-family: "Microsoft YaHei";
+            }
+            QMessageBox QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 15px;
+                font-size: 13px;
+                min-width: 60px;
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #1976D2;
+            }
+        """)
+        
+        response = confirm.exec_()
+        
+        if response == QMessageBox.Yes:
+            try:
+                db = DatabaseConnection()
+                success, cleared_tables = db.clear_database()
+                
+                if success:
+                    tables_text = "\n".join(cleared_tables) if cleared_tables else "没有找到可清空的表"
+                    self.show_message("操作成功", f"数据库已成功清空！\n\n已清空的表：\n{tables_text}")
+                else:
+                    self.show_message("操作失败", "数据库清空失败，请查看日志获取详细信息。")
+            except Exception as e:
+                logging.error(f"清空数据库失败: {str(e)}")
+                self.show_message("操作失败", f"清空数据库时发生错误: {str(e)}")
 
     def show_about(self):
         """显示关于系统的信息"""
@@ -4318,42 +4372,42 @@ class WelcomeWindow(QMainWindow):
         try:
             from reportlab.pdfgen import canvas
             from reportlab.lib.pagesizes import A4
-            
+
             # 创建PDF画布
             c = canvas.Canvas(file_path, pagesize=A4)
             width, height = A4
-            
+
             # 使用标准字体
             c.setFont("Helvetica-Bold", 18)
-            
+
             # 标题 (使用英文)
             title = f"{keyword} {report_type} Report"
             c.drawCentredString(width / 2, height - 50, title)
-            
+
             # 生成时间
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
             c.setFont("Helvetica", 12)
             c.drawString(50, height - 80, f"Generated: {current_time}")
-            
+
             # 报告内容
             content_y = height - 120
             c.drawString(50, content_y, "Report Content:")
             content_y -= 20
-            
+
             c.drawString(50, content_y, "This is a simple ASCII report for testing purposes.")
             content_y -= 20
-            
+
             c.drawString(50, content_y, f"Keyword: {keyword}")
             content_y -= 20
-            
+
             c.drawString(50, content_y, f"Report Type: {report_type}")
             content_y -= 20
-            
+
             # 保存PDF
             c.save()
             logging.info(f"ASCII PDF报告已生成: {file_path}")
             return True
-        
+
         except Exception as e:
             logging.error(f"创建ASCII PDF失败: {str(e)}")
             import traceback
@@ -4464,7 +4518,7 @@ class WelcomeWindow(QMainWindow):
                                 include_summary=True, include_charts=True,
                                 include_predictions=True, include_recommendations=True):
         """创建基于真实数据的HTML报告
-        
+
         Args:
             file_path: 保存文件的完整路径
             keyword: 报告关键词
@@ -4477,7 +4531,8 @@ class WelcomeWindow(QMainWindow):
         """
         try:
             logging.info(f"创建HTML报告: {file_path}, 关键词: {keyword}, 报告类型: {report_type}")
-            logging.info(f"内容选项: 摘要={include_summary}, 图表={include_charts}, 预测={include_predictions}, 建议={include_recommendations}")
+            logging.info(
+                f"内容选项: 摘要={include_summary}, 图表={include_charts}, 预测={include_predictions}, 建议={include_recommendations}")
 
             # 从数据库获取真实数据
             conn = None
@@ -4487,9 +4542,9 @@ class WelcomeWindow(QMainWindow):
                 if not conn:
                     logging.error("数据库连接失败")
                     return False
-                    
+
                 cursor = conn.cursor()
-                
+
                 # 获取趋势数据
                 trend_data = []
                 cursor.execute(
@@ -4497,7 +4552,7 @@ class WelcomeWindow(QMainWindow):
                     (keyword,)
                 )
                 trend_data = cursor.fetchall()
-                
+
                 # 获取年龄分布数据
                 age_data = []
                 cursor.execute(
@@ -4505,7 +4560,7 @@ class WelcomeWindow(QMainWindow):
                     (keyword,)
                 )
                 age_data = cursor.fetchall()
-                
+
                 # 获取性别分布数据
                 gender_data = []
                 cursor.execute(
@@ -4513,7 +4568,7 @@ class WelcomeWindow(QMainWindow):
                     (keyword,)
                 )
                 gender_data = cursor.fetchall()
-                
+
                 # 获取兴趣分布数据
                 interest_data = []
                 cursor.execute(
@@ -4521,7 +4576,7 @@ class WelcomeWindow(QMainWindow):
                     (keyword,)
                 )
                 interest_data = cursor.fetchall()
-                
+
                 # 获取地域分布数据
                 region_data = []
                 cursor.execute(
@@ -4529,7 +4584,7 @@ class WelcomeWindow(QMainWindow):
                     (keyword,)
                 )
                 region_data = cursor.fetchall()
-                
+
                 # 获取需求数据
                 demand_data = []
                 cursor.execute(
@@ -4537,7 +4592,7 @@ class WelcomeWindow(QMainWindow):
                     (keyword,)
                 )
                 demand_data = cursor.fetchall()
-                
+
             except Exception as db_error:
                 logging.error(f"获取数据时出错: {str(db_error)}")
                 # 如果无法获取数据，使用空列表
@@ -4556,10 +4611,10 @@ class WelcomeWindow(QMainWindow):
             finally:
                 if conn:
                     conn.close()
-                
+
             # 创建报告内容
             current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M")
-            
+
             # 创建HTML报告
             html_content = f"""<!DOCTYPE html>
             <html>
@@ -4583,14 +4638,14 @@ class WelcomeWindow(QMainWindow):
                 <h1>{keyword} {report_type}报告</h1>
                 <p class="time">生成时间: {current_time}</p>
                 """
-                
+
             # 分析趋势数据
             trend_summary = ""
             trend_direction = "稳定"
             trend_volatility = "低"
             trend_peak = "无明显峰值"
             trend_recent = "保持平稳"
-            
+
             if trend_data and len(trend_data) > 1:
                 # 计算趋势基本信息
                 values = [val for _, val in trend_data if val is not None]
@@ -4600,19 +4655,19 @@ class WelcomeWindow(QMainWindow):
                     max_value = max(values)
                     min_value = min(values)
                     avg_value = sum(values) / len(values)
-                    
+
                     # 判断整体趋势方向
                     if end_value > start_value * 1.1:
                         trend_direction = "上升"
                     elif end_value < start_value * 0.9:
                         trend_direction = "下降"
-                    
+
                     # 判断波动性
                     if max_value > avg_value * 1.5:
                         trend_volatility = "高"
                     elif max_value > avg_value * 1.2:
                         trend_volatility = "中"
-                    
+
                     # 查找峰值
                     peak_index = values.index(max_value)
                     if peak_index > 0 and peak_index < len(trend_data) - 1:
@@ -4620,7 +4675,7 @@ class WelcomeWindow(QMainWindow):
                         if hasattr(peak_date, 'strftime'):
                             peak_date = peak_date.strftime('%Y年%m月')
                         trend_peak = f"在{peak_date}达到峰值"
-                    
+
                     # 最近走势
                     recent_values = values[-min(6, len(values)):]
                     if len(recent_values) > 1:
@@ -4632,7 +4687,7 @@ class WelcomeWindow(QMainWindow):
                             trend_recent = "呈下降趋势"
                         else:
                             trend_recent = "保持平稳"
-            
+
             # 生成摘要
             if include_summary:
                 # 提取年龄信息
@@ -4640,31 +4695,31 @@ class WelcomeWindow(QMainWindow):
                 if age_data:
                     max_age = max(age_data, key=lambda x: x[1])
                     age_group = max_age[0]
-                    
+
                 # 性别比例
                 gender_ratio = "不详"
                 if gender_data:
                     gender_ratio = "、".join([f"{name}占{rate:.1f}%" for name, rate in gender_data])
-                    
+
                 # 兴趣偏好
                 interests = "不详"
                 if interest_data:
                     interests = "、".join([name for name, _ in interest_data[:3]])
-                
+
                 # 地域信息
                 regions = "全国各地"
                 if region_data:
                     regions = "、".join([region for region, _ in region_data[:3]])
-                    
+
                 html_content += f"""
                 <div class="summary">
                     <h2>报告摘要</h2>
                     <p>本报告对"{keyword}"的搜索指数和用户画像进行了全面分析。研究数据显示，该关键词总体呈<span class="highlight">{trend_direction}</span>趋势，
                     波动性<span class="highlight">{trend_volatility}</span>，{trend_peak}。最近一段时间内，搜索指数{trend_recent}。</p>
-                    
+
                     <p>用户画像分析显示，搜索该关键词的用户主要集中在<span class="highlight">{age_group}</span>年龄段，性别比例为{gender_ratio}，
                     主要兴趣包括{interests}。地域分布上，<span class="highlight">{regions}</span>的用户搜索量较大。</p>
-                    
+
                     <p>基于这些数据，建议针对主要用户群体优化产品和营销策略，并关注相关市场趋势的变化。</p>
                 </div>
                 """
@@ -4675,7 +4730,7 @@ class WelcomeWindow(QMainWindow):
                 <div class="section">
                     <h2>搜索趋势分析</h2>
                 """
-                
+
                 if trend_data and len(trend_data) > 1:
                     # 获取日期范围
                     start_date = trend_data[0][0]
@@ -4684,7 +4739,7 @@ class WelcomeWindow(QMainWindow):
                         start_date = start_date.strftime('%Y年%m月%d日')
                     if hasattr(end_date, 'strftime'):
                         end_date = end_date.strftime('%Y年%m月%d日')
-                    
+
                     # 计算趋势数据
                     values = [val for _, val in trend_data if val is not None]
                     if values:
@@ -4693,32 +4748,32 @@ class WelcomeWindow(QMainWindow):
                         max_value = max(values)
                         min_value = min(values)
                         avg_value = sum(values) / len(values)
-                        
+
                         # 计算变化百分比
                         change_percent = ((end_value - start_value) / start_value * 100) if start_value > 0 else 0
                         change_text = f"上升了{change_percent:.1f}%" if change_percent > 0 else f"下降了{abs(change_percent):.1f}%" if change_percent < 0 else "基本保持不变"
-                        
+
                         # 查找最高点和最低点
                         peak_index = values.index(max_value)
                         valley_index = values.index(min_value)
                         peak_date = trend_data[peak_index][0]
                         valley_date = trend_data[valley_index][0]
-                        
+
                         if hasattr(peak_date, 'strftime'):
                             peak_date = peak_date.strftime('%Y年%m月%d日')
                         if hasattr(valley_date, 'strftime'):
                             valley_date = valley_date.strftime('%Y年%m月%d日')
-                        
+
                         # 将分析结果展示为文字总结
                         html_content += f"""
                         <p>分析周期: <span class="highlight">{start_date}</span> 至 <span class="highlight">{end_date}</span></p>
-                        
+
                         <p>在分析的{len(trend_data)}个数据点中，"{keyword}"的搜索指数总体{change_text}。
                         期间最高指数为<span class="highlight">{max_value}</span>（{peak_date}），
                         最低指数为<span class="highlight">{min_value}</span>（{valley_date}），
                         平均指数为<span class="highlight">{avg_value:.1f}</span>。</p>
                         """
-                        
+
                         # 根据趋势特点给出分析
                         if change_percent > 20:
                             html_content += f"""<p>数据显示该关键词搜索热度<span class="highlight">增长迅速</span>，表明市场对此领域的兴趣正在快速提升。</p>"""
@@ -4726,7 +4781,7 @@ class WelcomeWindow(QMainWindow):
                             html_content += f"""<p>数据显示该关键词搜索热度<span class="highlight">明显下降</span>，可能表明市场关注点正在转移。</p>"""
                         elif abs(change_percent) <= 5:
                             html_content += f"""<p>数据显示该关键词搜索热度<span class="highlight">相对稳定</span>，表明市场对此的需求处于稳定状态。</p>"""
-                        
+
                         # 添加季节性分析
                         if len(trend_data) > 30:
                             html_content += """<p>长期数据分析显示，"""
@@ -4736,40 +4791,40 @@ class WelcomeWindow(QMainWindow):
                                 html_content += """该关键词搜索热度相对<span class="highlight">稳定持续</span>，未显示明显的季节性波动。</p>"""
                 else:
                     html_content += """<p>暂无足够数据进行趋势分析。</p>"""
-                
+
                 html_content += """
                 </div>
                 """
-                
+
                 # 人群画像分析 - 文字总结
                 html_content += """
                 <div class="section">
                     <h2>人群画像分析</h2>
                 """
-                
+
                 # 年龄分析
                 if age_data:
                     max_age = max(age_data, key=lambda x: x[1])
                     sorted_ages = sorted(age_data, key=lambda x: x[1], reverse=True)
-                    
+
                     html_content += f"""
                     <p><strong>年龄分布:</strong> 搜索该关键词的用户主要集中在<span class="highlight">{max_age[0]}</span>年龄段，
                     占比达到<span class="highlight">{max_age[1]:.1f}%</span>。
                     """
-                    
+
                     if len(sorted_ages) > 1:
                         html_content += f"""其次是{sorted_ages[1][0]}（{sorted_ages[1][1]:.1f}%）"""
                         if len(sorted_ages) > 2:
                             html_content += f"""和{sorted_ages[2][0]}（{sorted_ages[2][1]:.1f}%）"""
-                    
+
                     html_content += "。</p>"
-                    
+
                     # 年龄特征分析
                     if "19岁以下" in [age[0] for age in sorted_ages[:2]]:
                         html_content += """<p>年轻用户比例较高，建议产品设计和营销内容更贴近年轻人喜好。</p>"""
                     elif "50岁以上" in [age[0] for age in sorted_ages[:2]]:
                         html_content += """<p>中老年用户比例较高，建议产品设计考虑易用性和功能实用性。</p>"""
-                
+
                 # 性别分析
                 if gender_data and len(gender_data) > 1:
                     male_rate = 0
@@ -4779,39 +4834,40 @@ class WelcomeWindow(QMainWindow):
                             male_rate = rate
                         elif "女" in name:
                             female_rate = rate
-                    
+
                     dominant_gender = "男性" if male_rate > female_rate else "女性"
-                    ratio = max(male_rate, female_rate) / min(male_rate, female_rate) if min(male_rate, female_rate) > 0 else 0
-                    
+                    ratio = max(male_rate, female_rate) / min(male_rate, female_rate) if min(male_rate,
+                                                                                             female_rate) > 0 else 0
+
                     html_content += f"""
                     <p><strong>性别分布:</strong> 搜索该关键词的用户中，<span class="highlight">{dominant_gender}</span>占主导，
                     男女比例约为{male_rate:.1f}:{female_rate:.1f}。"""
-                    
+
                     if ratio > 2:
                         html_content += f"性别差异<span class=\"highlight\">显著</span>，建议重点关注{dominant_gender}用户需求。"
                     else:
                         html_content += "男女分布较为平衡，建议兼顾不同性别用户需求。"
-                    
+
                     html_content += "</p>"
-                
+
                 # 地域分布
                 if region_data:
                     top_regions = region_data[:3]
                     region_names = [name for name, _ in top_regions]
-                    
+
                     html_content += f"""
                     <p><strong>地域分布:</strong> 搜索热度主要集中在<span class="highlight">{'、'.join(region_names)}</span>等地区。
                     """
-                    
+
                     # 判断是否集中在一线城市
                     first_tier = ["北京", "上海", "广州", "深圳"]
                     if any(city in name for name, _ in top_regions for city in first_tier):
                         html_content += "一线城市用户关注度较高，表明产品/服务在发达地区有较大市场。"
                     elif all(("省" in name or "自治区" in name) for name, _ in top_regions):
                         html_content += "主要分布在省级行政区，表明产品/服务在全国范围内有广泛需求。"
-                    
+
                     html_content += "</p>"
-                
+
                 html_content += """
                 </div>
                 """
@@ -4822,34 +4878,34 @@ class WelcomeWindow(QMainWindow):
                 <div class="section">
                     <h2>需求分析</h2>
                 """
-                
+
                 if demand_data:
                     top_demands = demand_data[:5]
                     html_content += f"""
                     <p><strong>热门搜索词:</strong> 与"{keyword}"相关的热门搜索包括
                     <span class="highlight">{'、'.join([word for word, _ in top_demands])}</span>。</p>
-                    
+
                     <p>这表明用户在搜索{keyword}时，主要关注以下几个方面：</p>
                     <ul>
                     """
-                    
+
                     # 分析搜索词特点
                     has_price = any("价格" in word or "多少钱" in word for word, _ in top_demands)
                     has_brand = any("品牌" in word or "排行" in word for word, _ in top_demands)
                     has_function = any("怎么" in word or "如何" in word or "功能" in word for word, _ in top_demands)
-                    
+
                     if has_price:
                         html_content += "<li>产品或服务的<span class=\"highlight\">价格因素</span>，表明价格是用户决策的重要考量</li>"
                     if has_brand:
                         html_content += "<li>关注<span class=\"highlight\">品牌和排名</span>，表明用户在寻找可靠和有口碑的选择</li>"
                     if has_function:
                         html_content += "<li>产品的<span class=\"highlight\">功能和使用方法</span>，表明用户关注实用性和易用性</li>"
-                    
+
                     html_content += f"""
                     <li>搜索词中的高频内容反映了用户对{keyword}的主要需求和关注点</li>
                     </ul>
                     """
-                
+
                 html_content += """
                 </div>
                 """
@@ -4858,27 +4914,27 @@ class WelcomeWindow(QMainWindow):
             if include_recommendations:
                 # 分析建议基于实际数据
                 recommendations = []
-                
+
                 # 基于热门地区的建议
                 if region_data:
                     top_regions = [region for region, _ in region_data[:3]]
                     recommendations.append(f"在{'、'.join(top_regions)}等热门地区增加营销投入")
-                    
+
                 # 基于人群特征的建议
                 if age_data:
                     max_age = max(age_data, key=lambda x: x[1])
                     recommendations.append(f"针对{max_age[0]}年龄段用户优化产品设计和营销内容")
-                    
+
                 # 基于兴趣特征的建议
                 if interest_data:
                     top_interests = [interest for interest, _ in interest_data[:2]]
                     recommendations.append(f"结合用户对{'和'.join(top_interests)}的兴趣，开发相关功能或内容")
-                    
+
                 # 基于需求词的建议
                 if demand_data:
                     top_demands = [word for word, _ in demand_data[:2]]
                     recommendations.append(f"针对用户关注的{'和'.join(top_demands)}等热门话题，提供专业内容")
-                    
+
                 # 基于趋势的建议
                 if trend_data and len(trend_data) > 1:
                     values = [val for _, val in trend_data if val is not None]
@@ -4886,32 +4942,32 @@ class WelcomeWindow(QMainWindow):
                         start_value = values[0]
                         end_value = values[-1]
                         change_percent = ((end_value - start_value) / start_value * 100) if start_value > 0 else 0
-                        
+
                         if change_percent > 20:
                             recommendations.append("把握搜索热度上升趋势，加大市场投入力度")
                         elif change_percent < -20:
                             recommendations.append("关注搜索热度下降趋势，寻找新的增长点")
-                    
+
                 # 通用建议
                 recommendations.append("持续跟踪市场趋势，及时调整产品策略")
-                
+
                 # 如果没有足够的建议，添加一些通用的
                 if len(recommendations) < 3:
                     recommendations.append("建立完整的用户转化渠道，提高获客效率")
                     recommendations.append("优化搜索引擎营销策略，提升曝光和点击率")
-                    
+
                 html_content += """
                 <div class="section">
                     <h2>分析建议</h2>
                     <div class="recommendation">
                         <ol>
                 """
-                
+
                 for recommendation in recommendations[:5]:  # 最多显示5条建议
                     html_content += f"""
                             <li>{recommendation}</li>
                     """
-                    
+
                 html_content += """
                         </ol>
                     </div>

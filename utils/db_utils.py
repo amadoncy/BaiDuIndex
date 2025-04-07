@@ -269,17 +269,41 @@ class DatabaseConnection:
     def test_connection(self):
         """测试数据库连接"""
         try:
-            if self.connection:
-                with self.connection.cursor() as cursor:
-                    cursor.execute("SELECT 1")
-                    result = cursor.fetchone()
-                    if result:
-                        logging.info("数据库连接测试成功！")
-                        return True
-            return False
+            with self.connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                return True
         except Exception as e:
-            logging.error(f"数据库连接测试失败：{str(e)}")
+            logging.error(f"数据库连接测试失败: {str(e)}")
             return False
+
+    def clear_database(self):
+        """清空数据库表内容，但保留users、area_codes和cookies表的数据"""
+        try:
+            with self.connection.cursor() as cursor:
+                # 获取所有表名
+                cursor.execute("SHOW TABLES")
+                tables = [table[0] for table in cursor.fetchall()]
+                
+                # 排除需要保留的表
+                excluded_tables = ['users', 'area_codes', 'cookies']
+                tables_to_clear = [table for table in tables if table not in excluded_tables]
+                
+                # 临时禁用外键检查
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+                
+                # 清空所有不需要保留的表
+                for table in tables_to_clear:
+                    cursor.execute(f"TRUNCATE TABLE `{table}`")
+                    logging.info(f"已清空表: {table}")
+                
+                # 重新启用外键检查
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+                
+                self.connection.commit()
+                return True, tables_to_clear
+        except Exception as e:
+            logging.error(f"清空数据库表失败: {str(e)}")
+            return False, []
 
 
 class DatabaseManager:
