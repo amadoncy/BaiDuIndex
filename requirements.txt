@@ -16,3 +16,5 @@ numpy~=2.2.3
 tensorflow~=2.19.0
 scikit-learn~=1.6.1
 matplotlib~=3.10.1
+seaborn~=0.13.2  # 用于数据可视化
+PyQtWebEngine==5.15.6  # 用于显示HTML可视化

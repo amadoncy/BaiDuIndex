@@ -4,14 +4,13 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel,
                              QListWidgetItem, QFrame, QComboBox, QSpinBox,
                              QLineEdit, QProgressBar, QTextEdit, QTabWidget,
                              QTableWidget, QTableWidgetItem, QHeaderView,
-                             QGroupBox, QRadioButton, QButtonGroup, QCheckBox,
-                             QProgressDialog, QFileDialog, QInputDialog)
+                             QGroupBox)
 from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint, QSize, QThread, pyqtSignal, QUrl
 from PyQt5.QtGui import QFont, QColor, QPalette, QLinearGradient, QPainter, QIcon
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage, QWebEngineSettings
 import os
 import logging
-from datetime import datetime, timedelta
+import datetime
 from utils.get_local_weather_utils import get_weather_info
 import requests
 import json
@@ -20,10 +19,7 @@ from config.city_codes import get_all_regions, get_region_provinces, get_provinc
 from pyecharts import options as opts
 from pyecharts.charts import Line, Bar, Pie, Map, Graph, Page
 from utils import db_utils
-from utils.db_utils import DatabaseConnection
 from gui.data_display_window import DataDisplayWindow
-import random
-import time
 
 
 class DataCollectionThread(QThread):
@@ -390,7 +386,7 @@ class WelcomeWindow(QMainWindow):
                 {"title": "数据采集", "description": "开始收集养老需求数据"},
                 {"title": "数据分析", "description": "分析已收集的数据"},
                 {"title": "数据展示", "description": "展示分析结果"},
-                {"title": "数据报告", "description": "生成综合分析报告"},
+                {"title": "导出数据", "description": "导出数据到Excel"},
                 {"title": "系统设置", "description": "调整系统配置"}
             ]
 
@@ -914,262 +910,13 @@ class WelcomeWindow(QMainWindow):
         return display_window
 
     def create_export_page(self):
-        """创建数据报告生成页面"""
+        """创建导出数据页面"""
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setSpacing(20)
-
-        # 创建标题
-        title_label = QLabel("数据报告生成")
-        title_label.setFont(QFont("Microsoft YaHei", 24, QFont.Bold))
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("""
-            QLabel {
-                color: white;
-                padding: 10px;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 10px;
-            }
-        """)
-        layout.addWidget(title_label)
-
-        # 创建关键词选择区域
-        keyword_layout = QHBoxLayout()
-        keyword_label = QLabel("选择关键词:")
-        keyword_label.setStyleSheet("color: white;")
-        self.report_keyword_combo = QComboBox()
-        self.report_keyword_combo.setStyleSheet("""
-            QComboBox {
-                padding: 8px;
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 5px;
-                color: white;
-                min-width: 200px;
-            }
-            QComboBox:hover {
-                border: 1px solid rgba(255, 255, 255, 0.5);
-            }
-            QComboBox::drop-down {
-                border: 0px;
-                width: 30px;
-            }
-        """)
-
-        # 添加刷新按钮
-        self.refresh_button = QPushButton("刷新关键词")
-        self.refresh_button.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 5px;
-                color: white;
-                padding: 5px 10px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.3);
-                border: 1px solid rgba(255, 255, 255, 0.5);
-            }
-        """)
-        self.refresh_button.clicked.connect(self.refresh_report_keywords)
-
-        keyword_layout.addWidget(keyword_label)
-        keyword_layout.addWidget(self.report_keyword_combo)
-        keyword_layout.addWidget(self.refresh_button)
-        layout.addLayout(keyword_layout)
-
-        # 创建报告类型选择
-        report_type_layout = QHBoxLayout()
-        report_type_label = QLabel("报告类型:")
-        report_type_label.setStyleSheet("color: white;")
-
-        self.report_type_group = QButtonGroup()
-        report_types = ["完整报告", "趋势分析报告", "人群画像报告", "需求分析报告"]
-
-        report_type_container = QFrame()
-        report_type_container.setStyleSheet("""
-            QFrame {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 5px;
-                padding: 5px;
-            }
-        """)
-        report_container_layout = QHBoxLayout(report_type_container)
-        report_container_layout.setContentsMargins(10, 5, 10, 5)
-
-        for i, report_type in enumerate(report_types):
-            radio = QRadioButton(report_type)
-            radio.setStyleSheet("""
-                QRadioButton {
-                    color: white;
-                    spacing: 5px;
-                    padding: 5px;
-                }
-                QRadioButton::indicator {
-                    width: 15px;
-                    height: 15px;
-                    border-radius: 7px;
-                }
-                QRadioButton::indicator:unchecked {
-                    background-color: rgba(255, 255, 255, 0.3);
-                    border: 2px solid white;
-                }
-                QRadioButton::indicator:checked {
-                    background-color: #2196F3;
-                    border: 2px solid white;
-                }
-            """)
-            self.report_type_group.addButton(radio, i)
-            report_container_layout.addWidget(radio)
-
-        # 默认选择第一个
-        self.report_type_group.button(0).setChecked(True)
-
-        report_type_layout.addWidget(report_type_label)
-        report_type_layout.addWidget(report_type_container)
-        report_type_layout.addStretch()
-        layout.addLayout(report_type_layout)
-
-        # 报告格式部分移除，只保留HTML格式
-        format_info = QLabel("报告格式: HTML网页")
-        format_info.setStyleSheet("""
-            QLabel {
-                color: white;
-                padding: 8px;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 5px;
-            }
-        """)
-        layout.addWidget(format_info)
-
-        # 添加文件名和保存路径设置
-        filename_layout = QHBoxLayout()
-        filename_label = QLabel("文件名:")
-        filename_label.setStyleSheet("color: white;")
-        self.report_filename = QLineEdit()
-        self.report_filename.setPlaceholderText("输入报告文件名")
-        self.report_filename.setStyleSheet("""
-            QLineEdit {
-                padding: 8px;
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 5px;
-                color: white;
-            }
-            QLineEdit:focus {
-                border: 2px solid rgba(255, 255, 255, 0.5);
-            }
-        """)
-
-        filename_layout.addWidget(filename_label)
-        filename_layout.addWidget(self.report_filename)
-
-        path_btn = QPushButton("选择路径")
-        path_btn.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 5px;
-                color: white;
-                padding: 8px 15px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.3);
-                border: 1px solid rgba(255, 255, 255, 0.5);
-            }
-        """)
-        path_btn.clicked.connect(self.select_report_path)
-
-        filename_layout.addWidget(path_btn)
-        layout.addLayout(filename_layout)
-
-        # 添加报告路径显示
-        self.report_path_label = QLabel("保存路径: ./data/reports/")
-        self.report_path_label.setStyleSheet("""
-            QLabel {
-                color: white;
-                padding: 8px;
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 5px;
-            }
-        """)
-        layout.addWidget(self.report_path_label)
-
-        # 添加报告摘要和内容选项
-        options_container = QFrame()
-        options_container.setStyleSheet("""
-            QFrame {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 10px;
-                padding: 10px;
-            }
-            QCheckBox {
-                color: white;
-                spacing: 5px;
-            }
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-                border-radius: 3px;
-            }
-            QCheckBox::indicator:unchecked {
-                background-color: rgba(255, 255, 255, 0.2);
-                border: 1px solid white;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #2196F3;
-                border: 1px solid white;
-            }
-        """)
-
-        options_layout = QVBoxLayout(options_container)
-        options_layout.setContentsMargins(15, 10, 15, 10)
-
-        options_title = QLabel("报告内容选项")
-        options_title.setFont(QFont("Microsoft YaHei", 12, QFont.Bold))
-        options_title.setStyleSheet("color: white;")
-        options_layout.addWidget(options_title)
-
-        self.include_summary = QCheckBox("包含报告摘要")
-        self.include_summary.setChecked(True)
-        self.include_charts = QCheckBox("包含数据图表")
-        self.include_charts.setChecked(True)
-        self.include_predictions = QCheckBox("包含需求分析")
-        self.include_predictions.setChecked(True)
-        self.include_recommendations = QCheckBox("包含策略建议")
-        self.include_recommendations.setChecked(True)
-
-        options_layout.addWidget(self.include_summary)
-        options_layout.addWidget(self.include_charts)
-        options_layout.addWidget(self.include_predictions)
-        options_layout.addWidget(self.include_recommendations)
-
-        layout.addWidget(options_container)
-
-        # 添加生成报告按钮
-        generate_btn = QPushButton("生成报告")
-        generate_btn.setMinimumHeight(50)
-        generate_btn.setFont(QFont("Microsoft YaHei", 12, QFont.Bold))
-        generate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color: white;
-                border-radius: 10px;
-                padding: 10px 20px;
-            }
-            QPushButton:hover {
-                background-color: #42A5F5;
-            }
-            QPushButton:pressed {
-                background-color: #1976D2;
-            }
-        """)
-        generate_btn.clicked.connect(self.generate_report)
-        layout.addWidget(generate_btn)
-
-        # 加载已保存的关键词
-        self.load_report_keywords()
-
+        label = QLabel("导出数据功能开发中...")
+        label.setFont(QFont("Microsoft YaHei", 16))
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
         return page
 
     def create_settings_page(self):
@@ -1291,17 +1038,17 @@ class WelcomeWindow(QMainWindow):
         cache_group.addWidget(clear_cache_btn)
         cache_group.addStretch()
         settings_layout.addLayout(cache_group)
-        
-        # 5. 数据库清空功能
-        db_clear_group = QHBoxLayout()
-        db_clear_label = QLabel("数据库维护：")
-        clear_db_btn = QPushButton("清空数据库")
-        clear_db_btn.setToolTip("清空所有数据表，但保留用户、地区码和cookies数据")
-        clear_db_btn.clicked.connect(self.clear_database)
-        db_clear_group.addWidget(db_clear_label)
-        db_clear_group.addWidget(clear_db_btn)
-        db_clear_group.addStretch()
-        settings_layout.addLayout(db_clear_group)
+
+        # 5. 数据库数据清理设置
+        db_clean_group = QHBoxLayout()
+        db_clean_label = QLabel("数据库清理：")
+        clear_db_btn = QPushButton("清理数据表")
+        clear_db_btn.setToolTip("清除除users、area_codes、cookies表外的所有数据")
+        clear_db_btn.clicked.connect(self.clear_database_data)
+        db_clean_group.addWidget(db_clean_label)
+        db_clean_group.addWidget(clear_db_btn)
+        db_clean_group.addStretch()
+        settings_layout.addLayout(db_clean_group)
 
         # 6. 关于系统
         about_group = QHBoxLayout()
@@ -1371,7 +1118,7 @@ class WelcomeWindow(QMainWindow):
             self.weather_timer.setInterval(minutes * 60 * 1000)
             self.show_message("设置成功", f"天气更新频率已设置为{interval}")
         except Exception as e:
-            logging.error(f"更新天气频率出错: {str(e)}")
+            logging.error(f"更新天气更新频率失败: {str(e)}")
             QMessageBox.warning(self, "设置失败", "更新天气更新频率失败")
 
     def update_font_size(self, size):
@@ -1473,327 +1220,29 @@ class WelcomeWindow(QMainWindow):
             logging.error(f"更新主题失败: {str(e)}")
             QMessageBox.warning(self, "设置失败", "更新主题失败")
 
-    def select_report_path(self):
-        """选择报告保存路径"""
-        dir_path = QFileDialog.getExistingDirectory(self, "选择保存目录", "./data/reports/")
-        if dir_path:
-            self.report_path_label.setText(f"保存路径: {dir_path}/")
-
-    def load_report_keywords(self):
-        """加载可用于生成报告的关键词"""
-        try:
-            # 连接到数据库并获取已分析的关键词列表
-            from utils.db_utils import get_connection
-            conn = get_connection()
-            cursor = conn.cursor()
-            # 使用baidu_index_trends表代替不存在的trend_data表
-            cursor.execute("SELECT DISTINCT keyword FROM baidu_index_trends ORDER BY keyword")
-            keywords = [row[0] for row in cursor.fetchall()]
-
-            # 如果没有关键词，尝试从其他表获取
-            if not keywords:
-                cursor.execute("SELECT DISTINCT keyword FROM crowd_region_data ORDER BY keyword")
-                keywords = [row[0] for row in cursor.fetchall()]
-
-            # 如果还是没有关键词，再尝试另一个表
-            if not keywords:
-                cursor.execute("SELECT DISTINCT keyword FROM human_request_data ORDER BY keyword")
-                keywords = [row[0] for row in cursor.fetchall()]
-
-            # 如果没有关键词，添加提示选项
-            if not keywords:
-                self.report_keyword_combo.addItem("暂无可用数据")
-            else:
-                self.report_keyword_combo.addItems(keywords)
-
-            conn.close()
-        except Exception as e:
-            logging.error(f"加载报告关键词时出错: {str(e)}")
-            self.report_keyword_combo.addItem("加载关键词失败")
-            # 避免将错误详情显示在UI上，仅记录到日志文件中
-            import traceback
-            traceback.print_exc()
-            # 添加一些默认关键词以便于测试
-            self.report_keyword_combo.clear()
-            self.report_keyword_combo.addItems(["老人健康", "养老院", "智能陪护", "健康监测"])
-
-    def generate_report(self):
-        """生成数据分析报告"""
-        try:
-            # 获取关键词并检查有效性
-            keyword = self.report_keyword_combo.currentText()
-
-            # 记录关键词内容到日志，帮助调试
-            logging.info(f"选择的下拉框关键词: [{keyword}]")
-
-            # 检查关键词是否为空或无效
-            if keyword == "暂无可用数据" or keyword == "加载关键词失败" or keyword == "数据库连接失败" or not keyword.strip():
-                logging.info("下拉框关键词无效，弹出对话框让用户手动输入")
-                # 弹出对话框让用户手动输入
-                from PyQt5.QtWidgets import QInputDialog
-                input_keyword, ok = QInputDialog.getText(self, "输入关键词",
-                                                         "请输入要生成报告的关键词:")
-                if ok and input_keyword.strip():
-                    keyword = input_keyword.strip()
-                    logging.info(f"用户输入的关键词: {keyword}")
-                else:
-                    # 如果用户取消输入或输入为空，使用默认值
-                    keyword = "默认关键词"
-                    logging.info("用户未输入关键词，使用默认值")
-
-            # 确保关键词不为None或空字符串
-            if not keyword or not keyword.strip():
-                keyword = "默认关键词"
-                logging.info("关键词为空，使用默认值")
-
-            # 获取报告类型
-            report_type_id = self.report_type_group.checkedId()
-            report_types = ["完整报告", "趋势分析报告", "人群画像报告", "需求分析报告"]
-            report_type = report_types[report_type_id]
-
-            # 确保报告类型不为None或空字符串
-            if not report_type or not report_type.strip():
-                report_type = "完整报告"
-                logging.info("报告类型为空，使用默认值")
-
-            # 报告格式固定为HTML网页
-            report_format = "HTML网页"
-
-            # 获取文件名
-            filename = self.report_filename.text()
-            if not filename:
-                # 使用默认文件名
-                filename = f"{keyword}_{report_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-
-            # 获取保存路径
-            save_path = self.report_path_label.text().replace("保存路径: ", "")
-
-            # 确保保存目录存在
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-
-            # 获取报告内容选项
-            include_summary = self.include_summary.isChecked()
-            include_charts = self.include_charts.isChecked()
-            include_predictions = self.include_predictions.isChecked()
-            include_recommendations = self.include_recommendations.isChecked()
-
-            # 显示生成进度
-            progress = QProgressDialog("正在生成报告...", "取消", 0, 100, self)
-            progress.setWindowTitle("生成报告")
-            progress.setWindowModality(Qt.WindowModal)
-
-            # 实际生成报告的代码可以在这里实现
-            # 以下模拟报告生成过程
-            import time
-            for i in range(101):
-                progress.setValue(i)
-                time.sleep(0.05)  # 模拟处理时间
-                if progress.wasCanceled():
-                    break
-                self.refresh_ui()
-
-            if progress.wasCanceled():
-                self.show_message("已取消", "报告生成已取消")
-                return
-
-            file_extension = ".html"  # 只使用HTML扩展名
-            full_path = os.path.join(save_path, filename + file_extension)
-
-            # 先测试文件写入权限
-            test_path = os.path.join(save_path, f"test_{int(time.time())}.txt")
-            if not self.create_test_file(test_path):
-                self.show_message("错误", f"无法写入文件到指定路径: {save_path}\n请检查目录权限。")
-                return
-
-            # 删除测试文件
-            try:
-                os.remove(test_path)
-            except:
-                pass  # 忽略删除测试文件的错误
-
-            # 实际创建文件
-            try:
-                # 创建HTML报告
-                success = self.create_simple_text_file(
-                    full_path,
-                    keyword,
-                    report_type,
-                    "HTML网页",
-                    include_summary=include_summary,
-                    include_charts=include_charts,
-                    include_predictions=include_predictions,
-                    include_recommendations=include_recommendations
-                )
-
-                # 验证文件是否成功创建
-                if os.path.exists(full_path):
-                    from PyQt5.QtWidgets import QPushButton, QMessageBox
-                    msg = QMessageBox()
-                    msg.setWindowTitle("成功")
-                    msg.setText(f"HTML报告已成功生成并保存到:\n{full_path}")
-                    msg.setIcon(QMessageBox.Information)
-
-                    # 添加打开文件按钮
-                    open_button = QPushButton("打开文件")
-                    msg.addButton(open_button, QMessageBox.AcceptRole)
-                    msg.addButton("关闭", QMessageBox.RejectRole)
-
-                    # 显示消息框
-                    result = msg.exec_()
-
-                    # 如果用户点击了"打开文件"按钮
-                    if result == 0:  # AcceptRole (第一个按钮)
-                        try:
-                            import subprocess
-                            if os.name == 'nt':  # Windows
-                                os.startfile(full_path)
-                            elif os.name == 'posix':  # macOS, Linux
-                                subprocess.call(('xdg-open', full_path))
-                            logging.info(f"已打开文件: {full_path}")
-                        except Exception as open_error:
-                            logging.error(f"打开文件失败: {str(open_error)}")
-                            self.show_message("提示", f"无法自动打开文件，请手动打开: {full_path}")
-                else:
-                    self.show_message("警告", f"报告未能保存。\n目标路径: {full_path}\n请检查保存路径的权限或磁盘空间。")
-            except Exception as file_error:
-                logging.error(f"创建报告文件时出错: {str(file_error)}")
-                self.show_message("错误", f"创建报告文件时出错: {str(file_error)}")
-                import traceback
-                traceback.print_exc()
-
-        except Exception as e:
-            logging.error(f"生成报告时出错: {str(e)}")
-            self.show_message("错误", f"生成报告时出错: {str(e)}")
-            import traceback
-            traceback.print_exc()
-
-    def refresh_report_keywords(self):
-        """刷新报告关键词列表，从实际存在的表中获取"""
-        # 清空当前列表
-        self.report_keyword_combo.clear()
-
-        conn = None
-        try:
-            # 连接到数据库
-            from utils.db_utils import get_connection
-            conn = get_connection()
-            if not conn:
-                self.report_keyword_combo.addItem("数据库连接失败")
-                return
-
-            cursor = conn.cursor()
-
-            # 检查数据库中所有表
-            cursor.execute("SHOW TABLES")
-            tables = [table[0] for table in cursor.fetchall()]
-            logging.info(f"数据库中的表: {tables}")
-
-            keywords = []
-            tables_to_check = ['baidu_index_trends', 'crowd_age_data', 'crowd_gender_data',
-                               'crowd_interest_data', 'crowd_region_data', 'human_request_data']
-
-            # 从可能包含关键词的表中收集关键词
-            for table in tables_to_check:
-                if table in tables:
-                    try:
-                        cursor.execute(f"SELECT DISTINCT keyword FROM {table} WHERE keyword IS NOT NULL")
-                        table_keywords = [row[0] for row in cursor.fetchall()]
-                        if table_keywords:
-                            keywords.extend(table_keywords)
-                            logging.info(f"从{table}表中找到{len(table_keywords)}个关键词")
-                    except Exception as e:
-                        logging.warning(f"从{table}表获取关键词失败: {str(e)}")
-
-            # 去除重复项并排序
-            keywords = list(set(keywords))
-            keywords.sort()
-
-            # 添加到下拉框
-            if keywords:
-                self.report_keyword_combo.addItems(keywords)
-                # 添加刷新按钮到报告生成页面
-                if hasattr(self, 'refresh_button'):
-                    self.refresh_button.setText(f"已加载 {len(keywords)} 个关键词")
-            else:
-                self.report_keyword_combo.addItem("暂无可用数据")
-                if hasattr(self, 'refresh_button'):
-                    self.refresh_button.setText("刷新关键词")
-
-        except Exception as e:
-            logging.error(f"刷新关键词列表失败: {str(e)}")
-            self.report_keyword_combo.addItem("加载关键词失败")
-            import traceback
-            traceback.print_exc()
-        finally:
-            if conn:
-                conn.close()
-
     def clear_cache(self):
-        """清除缓存数据"""
+        """清除数据缓存"""
         try:
-            # 清除缓存文件夹
-            cache_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'cache')
-            if os.path.exists(cache_path):
-                for filename in os.listdir(cache_path):
-                    file_path = os.path.join(cache_path, filename)
-                    if os.path.isfile(file_path):
-                        os.remove(file_path)
-                self.show_message("清除成功", "缓存数据已成功清除！")
+            if os.path.exists(self.cache_dir):
+                cleared = False
+                for file in os.listdir(self.cache_dir):
+                    file_path = os.path.join(self.cache_dir, file)
+                    try:
+                        if os.path.isfile(file_path):
+                            os.unlink(file_path)
+                            cleared = True
+                    except Exception as e:
+                        logging.error(f"删除缓存文件失败 {file_path}: {str(e)}")
+
+                if cleared:
+                    self.show_message("清理成功", "数据缓存已清除")
+                else:
+                    self.show_message("提示", "缓存目录为空")
             else:
-                self.show_message("提示", "缓存目录不存在！")
+                self.show_message("提示", "缓存目录不存在")
         except Exception as e:
             logging.error(f"清除缓存失败: {str(e)}")
-            self.show_message("清除失败", f"清除缓存时发生错误: {str(e)}")
-            
-    def clear_database(self):
-        """清空数据库表，但保留用户、地区码和cookies表"""
-        # 确认对话框
-        confirm = QMessageBox()
-        confirm.setIcon(QMessageBox.Warning)
-        confirm.setWindowTitle("确认操作")
-        confirm.setText("此操作将清空所有数据表，但会保留用户信息、地区码和cookies数据。")
-        confirm.setInformativeText("此操作不可恢复，确定要继续吗？")
-        confirm.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        confirm.setDefaultButton(QMessageBox.No)
-        confirm.setStyleSheet("""
-            QMessageBox {
-                background-color: white;
-            }
-            QMessageBox QLabel {
-                color: #333333;
-                font-size: 14px;
-                font-family: "Microsoft YaHei";
-            }
-            QMessageBox QPushButton {
-                background-color: #2196F3;
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 5px 15px;
-                font-size: 13px;
-                min-width: 60px;
-            }
-            QMessageBox QPushButton:hover {
-                background-color: #1976D2;
-            }
-        """)
-        
-        response = confirm.exec_()
-        
-        if response == QMessageBox.Yes:
-            try:
-                db = DatabaseConnection()
-                success, cleared_tables = db.clear_database()
-                
-                if success:
-                    tables_text = "\n".join(cleared_tables) if cleared_tables else "没有找到可清空的表"
-                    self.show_message("操作成功", f"数据库已成功清空！\n\n已清空的表：\n{tables_text}")
-                else:
-                    self.show_message("操作失败", "数据库清空失败，请查看日志获取详细信息。")
-            except Exception as e:
-                logging.error(f"清空数据库失败: {str(e)}")
-                self.show_message("操作失败", f"清空数据库时发生错误: {str(e)}")
+            QMessageBox.warning(self, "清理失败", "清除缓存失败")
 
     def show_about(self):
         """显示关于系统的信息"""
@@ -1879,57 +1328,25 @@ class WelcomeWindow(QMainWindow):
     def save_settings(self):
         """保存当前设置到配置文件"""
         try:
-            settings = {}
-
-            # 安全地获取主题设置
-            theme_combo = self.findChild(QComboBox, 'theme_combo')
-            if theme_combo:
-                settings['theme'] = theme_combo.currentText()
-            else:
-                settings['theme'] = "深蓝主题"  # 默认主题
-
-            # 安全地获取字体大小设置
-            font_size_spin = self.findChild(QSpinBox, 'font_size_spin')
-            if font_size_spin:
-                settings['font_size'] = font_size_spin.value()
-            else:
-                settings['font_size'] = 14  # 默认字体大小
-
-            # 安全地获取天气更新间隔设置
-            weather_combo = self.findChild(QComboBox, 'weather_combo')
-            if weather_combo:
-                settings['weather_interval'] = weather_combo.currentText()
-            else:
-                settings['weather_interval'] = "30分钟"  # 默认更新间隔
-
-            # 确保缓存目录存在
-            if not os.path.exists(self.cache_dir):
-                os.makedirs(self.cache_dir)
+            settings = {
+                'theme': self.findChild(QComboBox, 'theme_combo').currentText(),
+                'font_size': self.findChild(QSpinBox, 'font_size_spin').value(),
+                'weather_interval': self.findChild(QComboBox, 'weather_combo').currentText()
+            }
 
             settings_path = os.path.join(self.cache_dir, 'settings.json')
             with open(settings_path, 'w', encoding='utf-8') as f:
                 json.dump(settings, f, ensure_ascii=False, indent=4)
-
-            logging.info("设置已成功保存")
         except Exception as e:
             logging.error(f"保存设置失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
 
     def load_settings(self):
         """加载保存的设置"""
         try:
             settings_path = os.path.join(self.cache_dir, 'settings.json')
-            if not os.path.exists(self.cache_dir):
-                logging.info("缓存目录不存在，将使用默认设置")
-                return
-
-            if not os.path.exists(settings_path):
-                logging.info("设置文件不存在，将使用默认设置")
-                return
-
-            with open(settings_path, 'r', encoding='utf-8') as f:
-                settings = json.load(f)
+            if os.path.exists(settings_path):
+                with open(settings_path, 'r', encoding='utf-8') as f:
+                    settings = json.load(f)
 
                 # 应用主题
                 theme_combo = self.findChild(QComboBox, 'theme_combo')
@@ -1945,14 +1362,8 @@ class WelcomeWindow(QMainWindow):
                 weather_combo = self.findChild(QComboBox, 'weather_combo')
                 if weather_combo and 'weather_interval' in settings:
                     weather_combo.setCurrentText(settings['weather_interval'])
-
-            logging.info("设置已成功加载")
-        except json.JSONDecodeError:
-            logging.error("设置文件格式错误，将使用默认设置")
         except Exception as e:
             logging.error(f"加载设置失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
 
     def create_data_analysis_page(self):
         """创建数据分析页面"""
@@ -2017,19 +1428,13 @@ class WelcomeWindow(QMainWindow):
         self.portrait_tab = QWidget()
         self.demand_tab = QWidget()
 
-        # 创建竞品分析标签页
-        self.competitor_tab = QWidget()
-
         # 先添加空标签页到标签页控件
-        self.analysis_tabs.addTab(trend_tab, "趋势分析")
         self.analysis_tabs.addTab(self.portrait_tab, "人群画像分析")
         self.analysis_tabs.addTab(self.demand_tab, "需求图谱分析")
-        self.analysis_tabs.addTab(self.competitor_tab, "竞品分析")
 
         # 初始化标签页的内容
         self.init_portrait_tab()
         self.init_demand_tab()
-        self.init_competitor_tab()  # 初始化竞品分析标签页
 
         layout.addWidget(self.analysis_tabs)
         return page
@@ -2145,486 +1550,6 @@ class WelcomeWindow(QMainWindow):
         self.interest_chart_view.setMinimumHeight(500)
 
         layout.addWidget(self.interest_chart_view)
-
-    def init_competitor_tab(self):
-        """初始化竞品分析标签页"""
-        layout = QVBoxLayout(self.competitor_tab)
-
-        # 上部分：竞品关键词选择区域
-        selection_frame = QFrame()
-        selection_frame.setStyleSheet("""
-            QFrame {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 10px;
-                padding: 10px;
-            }
-        """)
-        selection_layout = QVBoxLayout(selection_frame)
-
-        # 说明文字
-        help_label = QLabel("添加多个关键词进行对比分析，了解竞争态势")
-        help_label.setStyleSheet("color: white; font-style: italic;")
-        selection_layout.addWidget(help_label)
-
-        # 关键词输入区域
-        keywords_layout = QHBoxLayout()
-
-        self.competitor_input = QLineEdit()
-        self.competitor_input.setPlaceholderText("输入要比较的关键词")
-        self.competitor_input.setStyleSheet("""
-            QLineEdit {
-                padding: 8px;
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 5px;
-                color: white;
-            }
-        """)
-
-        add_button = QPushButton("添加")
-        add_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border-radius: 5px;
-                padding: 8px 15px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-        """)
-        add_button.clicked.connect(self.add_competitor_keyword)
-
-        compare_button = QPushButton("开始比较")
-        compare_button.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color: white;
-                border-radius: 5px;
-                padding: 8px 15px;
-            }
-            QPushButton:hover {
-                background-color: #1976D2;
-            }
-        """)
-        compare_button.clicked.connect(self.compare_competitors)
-
-        clear_button = QPushButton("清空")
-        clear_button.setStyleSheet("""
-            QPushButton {
-                background-color: #F44336;
-                color: white;
-                border-radius: 5px;
-                padding: 8px 15px;
-            }
-            QPushButton:hover {
-                background-color: #d32f2f;
-            }
-        """)
-        clear_button.clicked.connect(self.clear_competitors)
-
-        keywords_layout.addWidget(self.competitor_input)
-        keywords_layout.addWidget(add_button)
-        keywords_layout.addWidget(compare_button)
-        keywords_layout.addWidget(clear_button)
-
-        selection_layout.addLayout(keywords_layout)
-
-        # 已添加的关键词列表
-        list_label = QLabel("已添加的关键词:")
-        list_label.setStyleSheet("color: white; margin-top: 10px;")
-        selection_layout.addWidget(list_label)
-
-        self.competitor_list = QListWidget()
-        self.competitor_list.setStyleSheet("""
-            QListWidget {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 5px;
-                color: white;
-                padding: 5px;
-            }
-            QListWidget::item {
-                padding: 5px;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }
-            QListWidget::item:selected {
-                background: rgba(33, 150, 243, 0.3);
-            }
-        """)
-        self.competitor_list.setMaximumHeight(150)
-        selection_layout.addWidget(self.competitor_list)
-
-        # 将选择区域添加到主布局
-        layout.addWidget(selection_frame)
-
-        # 下部分：图表显示区域
-        chart_frame = QFrame()
-        chart_frame.setStyleSheet("""
-            QFrame {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 10px;
-                padding: 10px;
-            }
-        """)
-        chart_layout = QVBoxLayout(chart_frame)
-
-        # 创建竞品分析图表
-        self.competitor_chart_view = QWebEngineView()
-        self.competitor_chart_view.setMinimumHeight(450)
-        chart_layout.addWidget(self.competitor_chart_view)
-
-        # 分析结果文本区域
-        result_label = QLabel("分析结果:")
-        result_label.setStyleSheet("color: white; margin-top: 10px;")
-        chart_layout.addWidget(result_label)
-
-        self.competitor_result = QTextEdit()
-        self.competitor_result.setReadOnly(True)
-        self.competitor_result.setStyleSheet("""
-            QTextEdit {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 5px;
-                color: white;
-                padding: 10px;
-            }
-        """)
-        self.competitor_result.setMaximumHeight(150)
-        chart_layout.addWidget(self.competitor_result)
-
-        # 将图表区域添加到主布局
-        layout.addWidget(chart_frame)
-
-        # 初始化数据
-        self.competitor_keywords = []
-
-    def add_competitor_keyword(self):
-        """添加竞品关键词到列表"""
-        keyword = self.competitor_input.text().strip()
-        if not keyword:
-            self.show_message("提示", "请输入关键词")
-            return
-
-        if keyword in self.competitor_keywords:
-            self.show_message("提示", f"关键词 '{keyword}' 已在列表中")
-            return
-
-        # 限制最多5个关键词
-        if len(self.competitor_keywords) >= 5:
-            self.show_message("提示", "最多只能添加5个关键词进行比较")
-            return
-
-        self.competitor_keywords.append(keyword)
-        self.competitor_list.addItem(keyword)
-        self.competitor_input.clear()
-
-    def clear_competitors(self):
-        """清空竞品关键词列表"""
-        self.competitor_keywords = []
-        self.competitor_list.clear()
-        self.competitor_chart_view.setHtml("")
-        self.competitor_result.clear()
-
-    def compare_competitors(self):
-        """比较多个关键词的趋势数据"""
-        if not self.competitor_keywords:
-            self.show_message("提示", "请先添加要比较的关键词")
-            return
-
-        try:
-            # 连接数据库
-            connection = db_utils.get_connection()
-            cursor = connection.cursor()
-
-            all_keyword_data = {}
-            earliest_date = None
-            latest_date = None
-
-            # 查询每个关键词的趋势数据
-            for keyword in self.competitor_keywords:
-                query = """
-                SELECT date, index_value
-                FROM baidu_index_trends 
-                WHERE keyword = %s 
-                ORDER BY date
-                """
-                cursor.execute(query, (keyword,))
-                results = cursor.fetchall()
-
-                if not results:
-                    self.show_message("提示", f"未找到关键词 '{keyword}' 的趋势数据")
-                    continue
-
-                # 提取数据
-                dates = []
-                values = []
-
-                for row in results:
-                    if row[0] and hasattr(row[0], 'strftime'):
-                        date_str = row[0].strftime('%Y-%m-%d')
-                    else:
-                        date_str = str(row[0])
-
-                    dates.append(date_str)
-                    values.append(float(row[1]) if row[1] is not None else 0)
-
-                # 更新日期范围
-                if earliest_date is None or dates[0] < earliest_date:
-                    earliest_date = dates[0]
-                if latest_date is None or dates[-1] > latest_date:
-                    latest_date = dates[-1]
-
-                all_keyword_data[keyword] = {
-                    'dates': dates,
-                    'values': values
-                }
-
-            cursor.close()
-            connection.close()
-
-            if not all_keyword_data:
-                self.show_message("提示", "没有找到任何关键词的数据")
-                return
-
-            # 生成竞品分析图表
-            self.generate_competitor_chart(all_keyword_data)
-
-            # 生成分析结果
-            self.generate_competitor_analysis(all_keyword_data, earliest_date, latest_date)
-
-        except Exception as e:
-            logging.error(f"竞品分析失败: {str(e)}")
-            self.show_message("错误", f"竞品分析失败: {str(e)}")
-
-    def generate_competitor_chart(self, all_keyword_data):
-        """生成竞品比较图表"""
-        # 使用pyecharts创建折线图
-        line = Line(init_opts=opts.InitOpts(
-            width="100%",
-            height="450px",
-            bg_color="#1a237e",
-            renderer="canvas"
-        ))
-
-        # 合并所有日期并去重
-        all_dates = set()
-        for keyword_data in all_keyword_data.values():
-            all_dates.update(keyword_data['dates'])
-
-        all_dates = sorted(list(all_dates))
-
-        # 添加X轴数据
-        line.add_xaxis(all_dates)
-
-        # 为每个关键词添加一条线
-        colors = ["#4CAF50", "#FF5722", "#2196F3", "#9C27B0", "#FFC107"]  # 为5个关键词预设颜色
-
-        for i, (keyword, data) in enumerate(all_keyword_data.items()):
-            # 需要将数据映射到统一的日期轴上
-            values_dict = dict(zip(data['dates'], data['values']))
-            aligned_values = [values_dict.get(date, None) for date in all_dates]
-
-            # 对缺失值进行插值处理
-            for j in range(len(aligned_values)):
-                if aligned_values[j] is None:
-                    # 向前找最近的非None值
-                    prev_value = None
-                    for k in range(j - 1, -1, -1):
-                        if aligned_values[k] is not None:
-                            prev_value = aligned_values[k]
-                            break
-
-                    # 向后找最近的非None值
-                    next_value = None
-                    for k in range(j + 1, len(aligned_values)):
-                        if aligned_values[k] is not None:
-                            next_value = aligned_values[k]
-                            break
-
-                    # 线性插值
-                    if prev_value is not None and next_value is not None:
-                        aligned_values[j] = (prev_value + next_value) / 2
-                    elif prev_value is not None:
-                        aligned_values[j] = prev_value
-                    elif next_value is not None:
-                        aligned_values[j] = next_value
-                    else:
-                        aligned_values[j] = 0
-
-            color = colors[i % len(colors)]
-
-            line.add_yaxis(
-                keyword,
-                aligned_values,
-                is_smooth=True,
-                symbol_size=6,
-                linestyle_opts=opts.LineStyleOpts(width=2, color=color),
-                itemstyle_opts=opts.ItemStyleOpts(color=color),
-                label_opts=opts.LabelOpts(is_show=False)
-            )
-
-        # 设置全局选项
-        line.set_global_opts(
-            title_opts=opts.TitleOpts(
-                title="关键词竞争趋势对比",
-                subtitle="数据来源：百度指数",
-                pos_left="center",
-                title_textstyle_opts=opts.TextStyleOpts(color="#FFFFFF", font_size=18),
-                subtitle_textstyle_opts=opts.TextStyleOpts(color="#B0BEC5", font_size=12)
-            ),
-            tooltip_opts=opts.TooltipOpts(
-                trigger="axis",
-                axis_pointer_type="cross",
-                background_color="rgba(50,50,50,0.7)",
-                border_color="#ccc",
-                textstyle_opts=opts.TextStyleOpts(color="#fff")
-            ),
-            legend_opts=opts.LegendOpts(
-                pos_top="8%",
-                pos_left="center",
-                orient="horizontal",
-                textstyle_opts=opts.TextStyleOpts(color="#fff")
-            ),
-            toolbox_opts=opts.ToolboxOpts(
-                is_show=True,
-                feature={
-                    "dataZoom": {"yAxisIndex": "none"},
-                    "restore": {},
-                    "saveAsImage": {}
-                }
-            ),
-            xaxis_opts=opts.AxisOpts(
-                type_="category",
-                boundary_gap=False,
-                axislabel_opts=opts.LabelOpts(rotate=45, color="#B0BEC5", interval="auto", margin=8),
-                axisline_opts=opts.AxisLineOpts(linestyle_opts=opts.LineStyleOpts(color="#B0BEC5"))
-            ),
-            yaxis_opts=opts.AxisOpts(
-                type_="value",
-                name="搜索指数",
-                name_textstyle_opts=opts.TextStyleOpts(color="#B0BEC5"),
-                axislabel_opts=opts.LabelOpts(color="#B0BEC5"),
-                axisline_opts=opts.AxisLineOpts(linestyle_opts=opts.LineStyleOpts(color="#B0BEC5"))
-            ),
-            datazoom_opts=[
-                opts.DataZoomOpts(
-                    range_start=70,
-                    range_end=100,
-                    pos_bottom="5%"
-                ),
-                opts.DataZoomOpts(type_="inside")
-            ]
-        )
-
-        # 渲染图表
-        html = line.render_embed()
-
-        # 添加自定义CSS
-        custom_css = """
-        <style>
-            html, body {
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                height: 100%;
-                background-color: #1a237e;
-            }
-            .chart-container {
-                width: 100%;
-                height: 100%;
-            }
-        </style>
-        """
-
-        final_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            {custom_css}
-        </head>
-        <body>
-            <div class="chart-container">
-                {html}
-            </div>
-        </body>
-        </html>
-        """
-
-        self.competitor_chart_view.setHtml(final_html)
-
-    def generate_competitor_analysis(self, all_keyword_data, earliest_date, latest_date):
-        """生成竞品分析结果"""
-        analysis_text = f"<h3>竞品分析结果</h3>"
-        analysis_text += f"<p>分析期间: {earliest_date} 至 {latest_date}</p>"
-
-        # 计算各关键词的平均值、最大值、增长率
-        keyword_stats = {}
-
-        for keyword, data in all_keyword_data.items():
-            values = data['values']
-            if not values:
-                continue
-
-            avg_value = sum(values) / len(values)
-            max_value = max(values)
-            min_value = min(values)
-
-            # 计算增长率 (最后值 - 首值) / 首值 * 100%
-            if values[0] > 0:
-                growth_rate = (values[-1] - values[0]) / values[0] * 100
-            else:
-                growth_rate = 0
-
-            # 计算波动率 (标准差 / 平均值)
-            if avg_value > 0:
-                std_dev = (sum((x - avg_value) ** 2 for x in values) / len(values)) ** 0.5
-                volatility = std_dev / avg_value * 100
-            else:
-                volatility = 0
-
-            keyword_stats[keyword] = {
-                'avg': avg_value,
-                'max': max_value,
-                'min': min_value,
-                'growth_rate': growth_rate,
-                'volatility': volatility
-            }
-
-        # 对关键词进行排名（按平均值降序）
-        ranked_keywords = sorted(keyword_stats.keys(), key=lambda k: keyword_stats[k]['avg'], reverse=True)
-
-        # 生成排名表格
-        analysis_text += "<h4>关键词排名（按平均搜索指数）</h4>"
-        analysis_text += "<table style='width:100%; border-collapse:collapse;'>"
-        analysis_text += "<tr style='background-color:rgba(255,255,255,0.2);'><th>排名</th><th>关键词</th><th>平均指数</th><th>最高指数</th><th>增长率</th></tr>"
-
-        for i, keyword in enumerate(ranked_keywords):
-            stats = keyword_stats[keyword]
-            growth_color = "#4CAF50" if stats['growth_rate'] >= 0 else "#F44336"
-            analysis_text += f"<tr><td>{i + 1}</td><td>{keyword}</td><td>{stats['avg']:.1f}</td><td>{stats['max']}</td>"
-            analysis_text += f"<td style='color:{growth_color}'>{stats['growth_rate']:.1f}%</td></tr>"
-
-        analysis_text += "</table>"
-
-        # 为排名第一的关键词提供分析
-        if ranked_keywords:
-            top_keyword = ranked_keywords[0]
-            analysis_text += f"<h4>领先关键词分析</h4>"
-            analysis_text += f"<p>'{top_keyword}' 在竞争中处于领先地位，平均搜索指数为 {keyword_stats[top_keyword]['avg']:.1f}，"
-
-            if keyword_stats[top_keyword]['growth_rate'] > 0:
-                analysis_text += f"搜索趋势呈上升态势，增长率为 {keyword_stats[top_keyword]['growth_rate']:.1f}%。"
-            else:
-                analysis_text += f"搜索趋势呈下降态势，降低率为 {abs(keyword_stats[top_keyword]['growth_rate']):.1f}%。"
-
-            if keyword_stats[top_keyword]['volatility'] > 30:
-                analysis_text += f" 波动率较高 ({keyword_stats[top_keyword]['volatility']:.1f}%)，表明市场需求不稳定。"
-            else:
-                analysis_text += f" 波动率适中 ({keyword_stats[top_keyword]['volatility']:.1f}%)，表明市场需求相对稳定。"
-
-            analysis_text += "</p>"
-
-        # 设置结果
-        self.competitor_result.setHtml(analysis_text)
 
     def on_region_view_changed(self, index):
         """处理地域分布视图切换"""
@@ -3108,16 +2033,8 @@ class WelcomeWindow(QMainWindow):
                 return
 
             selected_date = latest_date[0]
-            # 检查日期类型并转换
-            if selected_date and hasattr(selected_date, 'strftime'):
+            if isinstance(selected_date, datetime.date):
                 selected_date = selected_date.strftime('%Y-%m-%d')
-            elif selected_date and isinstance(selected_date, str):
-                # 已经是字符串格式，不需要转换
-                pass
-            else:
-                # 转换为字符串以避免类型问题
-                selected_date = str(selected_date)
-
             print(f"使用日期: {selected_date}")
 
             try:
@@ -3173,52 +2090,20 @@ class WelcomeWindow(QMainWindow):
             if not results:
                 return
 
-            # 处理数据 - 显示更多数据点并优化最近数据
+            # 处理数据 - 采样优化
             total_points = len(results)
+            sample_size = min(total_points, 100)  # 最多显示100个数据点
+            step = max(1, total_points // sample_size)
 
-            # 增加数据点数量，从100增加到300
-            sample_size = min(total_points, 300)
-
-            # 如果总数据点小于或等于300，直接全部显示
-            if total_points <= sample_size:
-                dates = []
-                values = []
-                for row in results:
-                    if row[0] and hasattr(row[0], 'strftime'):
-                        dates.append(row[0].strftime('%Y-%m-%d'))
-                    else:
-                        dates.append(str(row[0]))
-                    values.append(float(row[1]) if row[1] is not None else 0)
-            else:
-                # 优先显示最近的数据，并在早期数据中采样
-                # 计算前1/3的数据进行采样，后2/3的数据全部显示
-                early_data_count = total_points // 3
-                recent_data_count = total_points - early_data_count
-
-                # 采样早期数据
-                early_sample_size = min(early_data_count, sample_size - recent_data_count)
-                early_step = max(1, early_data_count // early_sample_size)
-
-                dates = []
-                values = []
-
-                # 对早期数据进行采样
-                for i in range(0, early_data_count, early_step):
-                    row = results[i]
-                    if row[0] and hasattr(row[0], 'strftime'):
-                        dates.append(row[0].strftime('%Y-%m-%d'))
-                    else:
-                        dates.append(str(row[0]))
-                    values.append(float(row[1]) if row[1] is not None else 0)
-
-                # 显示全部最近数据
-                for i in range(early_data_count, total_points):
-                    row = results[i]
-                    if row[0] and hasattr(row[0], 'strftime'):
-                        dates.append(row[0].strftime('%Y-%m-%d'))
-                    else:
-                        dates.append(str(row[0]))
-                    values.append(float(row[1]) if row[1] is not None else 0)
+            dates = []
+            values = []
+            for i in range(0, total_points, step):
+                row = results[i]
+                if isinstance(row[0], datetime.date):
+                    dates.append(row[0].strftime('%Y-%m-%d'))
+                else:
+                    dates.append(str(row[0]))
+                values.append(float(row[1]) if row[1] is not None else 0)
 
             # 使用pyecharts创建趋势图
             line = Line(init_opts=opts.InitOpts(
@@ -3244,7 +2129,7 @@ class WelcomeWindow(QMainWindow):
                 )
             )
 
-            # 优化全局配置，默认显示最近30%的数据
+            # 优化全局配置
             line.set_global_opts(
                 title_opts=opts.TitleOpts(
                     title=f"{keyword}搜索趋势",
@@ -3303,14 +2188,9 @@ class WelcomeWindow(QMainWindow):
                     opts.DataZoomOpts(
                         is_show=True,
                         type_="slider",
-                        # 默认只显示最近30%的数据
-                        range_start=70,
+                        range_start=0,
                         range_end=100,
                         pos_bottom="5%"
-                    ),
-                    # 添加内部框选区域缩放组件
-                    opts.DataZoomOpts(
-                        type_="inside"
                     )
                 ],
                 legend_opts=opts.LegendOpts(
@@ -3369,16 +2249,9 @@ class WelcomeWindow(QMainWindow):
     def analyze_portrait_data(self, cursor, keyword, date):
         """分析人群画像数据"""
         try:
-            # 将字符串日期转换为datetime.date对象，并处理可能的类型问题
-            if date and isinstance(date, str):
-                try:
-                    # 使用导入的datetime，而不是datetime.datetime
-                    from datetime import datetime as dt
-                    date = dt.strptime(date, '%Y-%m-%d').date()
-                except ValueError:
-                    # 如果日期格式不正确，记录错误但继续使用原始值
-                    logging.error(f"无法解析日期字符串: {date}")
-                    # 不修改date值，使用原始值继续
+            # 将字符串日期转换为datetime.date对象
+            if isinstance(date, str):
+                date = datetime.datetime.strptime(date, '%Y-%m-%d').date()
 
             print(f"Debug - 查询参数: keyword={keyword}, date={date}, date类型={type(date)}")
 
@@ -4175,819 +3048,47 @@ class WelcomeWindow(QMainWindow):
             import traceback
             traceback.print_exc()
 
-    def refresh_ui(self):
-        """刷新UI，避免界面冻结"""
-        for _ in range(5):  # 多次重绘以确保UI得到更新
-            self.repaint()
-            time.sleep(0.01)
-
-    def create_test_file(self, file_path, content="测试文件内容"):
-        """创建测试文件以验证写入权限
-
-        Args:
-            file_path: 文件路径
-            content: 文件内容
-        """
+    def clear_database_data(self):
+        """清除数据库数据，保留users、area_codes、cookies表的数据"""
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            logging.info(f"测试文件已创建: {file_path}")
-            return True
+            # 显示确认对话框
+            reply = QMessageBox.question(
+                self,
+                '确认清理',
+                '确定要清除除users、area_codes、cookies表外的所有数据吗？\n此操作不可恢复！',
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+
+            if reply == QMessageBox.Yes:
+                # 连接数据库
+                connection = db_utils.get_connection()
+                cursor = connection.cursor()
+
+                # 需要清除数据的表
+                tables_to_clear = [
+                    "crowd_region_data",
+                    "crowd_age_data",
+                    "crowd_gender_data",
+                    "crowd_interest_data",
+                    "human_request_data",
+                    "baidu_index_trends"
+                ]
+
+                for table in tables_to_clear:
+                    try:
+                        delete_query = f"DELETE FROM {table};"
+                        cursor.execute(delete_query)
+                        print(f"已清除表 {table} 的数据")
+                    except Exception as e:
+                        print(f"清除表 {table} 数据时出错: {str(e)}")
+                        continue
+
+                connection.commit()
+                cursor.close()
+                connection.close()
+
+                self.show_message("清理成功", "数据库数据已清除")
         except Exception as e:
-            logging.error(f"创建测试文件失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return False
-
-    def create_simple_pdf(self, file_path, keyword, report_type):
-        """创建简单的PDF文件，使用reportlab库
-
-        Args:
-            file_path: 保存文件的完整路径
-            keyword: 关键词
-            report_type: 报告类型
-        """
-        try:
-            # 尝试导入reportlab
-            try:
-                from reportlab.pdfgen import canvas
-                from reportlab.lib.pagesizes import A4
-                from reportlab.pdfbase import pdfmetrics
-                from reportlab.pdfbase.ttfonts import TTFont
-                from reportlab.lib.units import inch
-            except ImportError:
-                logging.error("未安装reportlab库，无法创建PDF文件")
-                # 创建备用文本报告
-                fallback_path = self.create_fallback_report(file_path, keyword, report_type)
-                if fallback_path and os.path.exists(fallback_path):
-                    logging.info(f"已创建备用文本报告: {fallback_path}")
-                return False
-
-            # 创建PDF画布
-            c = canvas.Canvas(file_path, pagesize=A4)
-            width, height = A4
-
-            # 尝试注册中文字体
-            try:
-                # 确保字体目录存在
-                self.ensure_font_directory()
-
-                font_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                         "resources", "fonts", "simhei.ttf")
-
-                # 详细记录字体文件信息
-                if os.path.exists(font_path):
-                    file_size = os.path.getsize(font_path)
-                    logging.info(f"找到字体文件: {font_path}, 大小: {file_size} 字节")
-
-                    if file_size > 1000:  # 确保不是空文件或占位符
-                        try:
-                            # 尝试注册字体并记录结果
-                            pdfmetrics.registerFont(TTFont('SimHei', font_path))
-                            has_chinese_font = True
-                            logging.info("成功注册中文字体: SimHei")
-                        except Exception as reg_error:
-                            has_chinese_font = False
-                            logging.error(f"注册字体失败: {str(reg_error)}")
-                    else:
-                        has_chinese_font = False
-                        logging.warning(f"字体文件大小异常 ({file_size} 字节), 可能不是有效的字体文件")
-                else:
-                    has_chinese_font = False
-                    logging.warning(f"中文字体文件不存在: {font_path}")
-            except Exception as font_error:
-                has_chinese_font = False
-                logging.error(f"注册中文字体失败: {str(font_error)}")
-
-            # 设置字体
-            if has_chinese_font:
-                c.setFont("SimHei", 18)
-            else:
-                c.setFont("Helvetica-Bold", 18)
-
-            # 标题
-            title = f"{keyword} {report_type}报告"
-            c.drawCentredString(width / 2, height - 50, title)
-
-            # 生成时间
-            current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M")
-            if has_chinese_font:
-                c.setFont("SimHei", 12)
-            else:
-                c.setFont("Helvetica", 12)
-            c.drawString(50, height - 80, f"生成时间: {current_time}")
-
-            # 报告内容
-            content_y = height - 120
-            c.drawString(50, content_y, "报告内容:")
-            content_y -= 20
-
-            c.drawString(50, content_y, "这是一个简单的测试报告，用于验证文件生成功能。")
-            content_y -= 20
-
-            c.drawString(50, content_y, f"关键词: {keyword}")
-            content_y -= 20
-
-            c.drawString(50, content_y, f"报告类型: {report_type}")
-            content_y -= 20
-
-            # 添加一些示例数据
-            c.drawString(50, content_y, "趋势分析:")
-            content_y -= 20
-
-            c.drawString(70, content_y, f"该关键词搜索趋势呈上升状态")
-            content_y -= 20
-
-            c.drawString(70, content_y, f"主要用户年龄分布: 25-34")
-            content_y -= 20
-
-            c.drawString(70, content_y, f"性别比例: 男性占60%, 女性占40%")
-            content_y -= 20
-
-            # 保存PDF
-            c.save()
-
-            logging.info(f"简单PDF报告已成功生成: {file_path}")
-            return True
-
-        except Exception as e:
-            logging.error(f"创建简单PDF报告失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return False
-
-    def ensure_font_directory(self):
-        """确保字体目录存在"""
-        font_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources", "fonts")
-        if not os.path.exists(font_dir):
-            try:
-                os.makedirs(font_dir)
-                logging.info(f"已创建字体目录: {font_dir}")
-            except Exception as e:
-                logging.error(f"创建字体目录失败: {str(e)}")
-        return font_dir
-
-    def create_fallback_report(self, file_path, keyword, report_type):
-        """如果PDF创建失败，创建一个备用的文本报告
-
-        Args:
-            file_path: 原PDF文件路径
-            keyword: 关键词
-            report_type: 报告类型
-
-        Returns:
-            str: 备用文本文件路径
-        """
-        try:
-            # 修改扩展名为.txt
-            text_path = file_path.replace(".pdf", ".txt")
-            if text_path == file_path:  # 如果没有.pdf扩展名
-                text_path = file_path + ".txt"
-
-            with open(text_path, 'w', encoding='utf-8') as f:
-                f.write(f"{keyword} {report_type}报告\n")
-                f.write("=" * 30 + "\n\n")
-                f.write(f"生成时间: {datetime.now().strftime('%Y年%m月%d日 %H:%M')}\n\n")
-                f.write("注: 由于PDF创建失败，系统自动生成此备用文本报告。\n\n")
-                f.write("报告内容:\n")
-                f.write(f"  - 关键词: {keyword}\n")
-                f.write(f"  - 报告类型: {report_type}\n")
-                f.write(f"  - 该关键词搜索趋势呈上升状态\n")
-                f.write(f"  - 主要用户年龄分布: 25-34\n")
-                f.write(f"  - 性别比例: 男性占60%, 女性占40%\n")
-            logging.info(f"已创建备用文本报告: {text_path}")
-            return text_path
-        except Exception as e:
-            logging.error(f"创建备用文本报告失败: {str(e)}")
-            return None
-
-    def create_ascii_pdf(self, file_path, keyword, report_type):
-        """创建一个仅使用标准字体的ASCII版PDF
-
-        Args:
-            file_path: 文件路径
-            keyword: 关键词
-            report_type: 报告类型
-        """
-        try:
-            from reportlab.pdfgen import canvas
-            from reportlab.lib.pagesizes import A4
-
-            # 创建PDF画布
-            c = canvas.Canvas(file_path, pagesize=A4)
-            width, height = A4
-
-            # 使用标准字体
-            c.setFont("Helvetica-Bold", 18)
-
-            # 标题 (使用英文)
-            title = f"{keyword} {report_type} Report"
-            c.drawCentredString(width / 2, height - 50, title)
-
-            # 生成时间
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-            c.setFont("Helvetica", 12)
-            c.drawString(50, height - 80, f"Generated: {current_time}")
-
-            # 报告内容
-            content_y = height - 120
-            c.drawString(50, content_y, "Report Content:")
-            content_y -= 20
-
-            c.drawString(50, content_y, "This is a simple ASCII report for testing purposes.")
-            content_y -= 20
-
-            c.drawString(50, content_y, f"Keyword: {keyword}")
-            content_y -= 20
-
-            c.drawString(50, content_y, f"Report Type: {report_type}")
-            content_y -= 20
-
-            # 保存PDF
-            c.save()
-            logging.info(f"ASCII PDF报告已生成: {file_path}")
-            return True
-
-        except Exception as e:
-            logging.error(f"创建ASCII PDF失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return False
-
-    def get_competitor_analysis_html(self, main_keyword):
-        """生成竞品分析HTML内容
-
-        Args:
-            main_keyword: 主关键词
-
-        Returns:
-            str: 竞品分析HTML内容
-        """
-        try:
-            # 从数据库查询与该关键词相关的其他关键词
-            connection = db_utils.get_connection()
-            cursor = connection.cursor()
-
-            # 修改SQL查询，确保ORDER BY使用的列在SELECT列表中
-            related_keywords_query = """
-            SELECT DISTINCT word, pv 
-            FROM human_request_data 
-            WHERE keyword = %s 
-            ORDER BY pv DESC 
-            LIMIT 4
-            """
-            cursor.execute(related_keywords_query, (main_keyword,))
-            related_keywords = [row[0] for row in cursor.fetchall()]
-
-            # 如果没有足够的关键词，生成一些模拟关键词
-            if len(related_keywords) < 2:
-                if main_keyword.endswith("手机"):
-                    related_keywords = ["苹果手机", "华为手机", "小米手机", "OPPO手机"]
-                elif "游戏" in main_keyword:
-                    related_keywords = ["网络游戏", "手机游戏", "单机游戏", "休闲游戏"]
-                else:
-                    # 添加一些随机后缀
-                    suffixes = ["品牌", "推荐", "排行", "价格", "评测"]
-                    related_keywords = [f"{main_keyword}{suffix}" for suffix in suffixes[:4]]
-
-            # 创建HTML内容
-            html = """
-            <div class="section">
-                <h2>竞品分析</h2>
-                <p>以下是与主关键词相关的竞争关键词分析:</p>
-
-                <table>
-                    <tr>
-                        <th>关键词</th>
-                        <th>平均指数</th>
-                        <th>增长趋势</th>
-                        <th>竞争强度</th>
-                    </tr>
-            """
-
-            # 生成随机数据
-            for keyword in [main_keyword] + related_keywords[:4]:
-                avg_index = random.randint(1000, 10000)
-                growth = random.choice(["上升", "下降", "平稳"])
-                growth_class = "up" if growth == "上升" else ("down" if growth == "下降" else "stable")
-                competitive_intensity = random.choice(["高", "中", "低"])
-
-                html += f"""
-                    <tr>
-                        <td>{keyword}</td>
-                        <td>{avg_index}</td>
-                        <td class="{growth_class}">{growth}</td>
-                        <td>{competitive_intensity}</td>
-                    </tr>
-                """
-
-            html += """
-                </table>
-
-                <div class="competitor-chart">
-                    <p><strong>竞争态势分析:</strong> 通过对比相关关键词的搜索趋势，可以看出市场整体呈现"""
-
-            html += random.choice([
-                "上升趋势，各关键词之间的竞争日趋激烈。",
-                "稳定态势，各关键词保持相对稳定的市场份额。",
-                "差异化发展，主关键词在竞争中占据优势地位。",
-                "波动变化，市场需求受季节性因素影响明显。",
-                "分化趋势，头部关键词吸引了大部分搜索流量。"
-            ])
-
-            html += """</p>
-                </div>
-            </div>
-            """
-
-            cursor.close()
-            connection.close()
-            return html
-
-        except Exception as e:
-            logging.error(f"生成竞品分析HTML失败: {str(e)}")
-            # 返回简化版本
-            return """
-            <div class="section">
-                <h2>竞品分析</h2>
-                <p>目前暂无足够数据进行详细的竞品分析。建议收集更多相关关键词数据后再进行分析。</p>
-            </div>
-            """
-
-    def create_simple_text_file(self, file_path, keyword, report_type, format_type="HTML网页",
-                                include_summary=True, include_charts=True,
-                                include_predictions=True, include_recommendations=True):
-        """创建基于真实数据的HTML报告
-
-        Args:
-            file_path: 保存文件的完整路径
-            keyword: 报告关键词
-            report_type: 报告类型
-            format_type: 格式类型 ("HTML网页")
-            include_summary: 是否包含摘要
-            include_charts: 是否包含图表
-            include_predictions: 是否包含预测和竞品分析
-            include_recommendations: 是否包含建议
-        """
-        try:
-            logging.info(f"创建HTML报告: {file_path}, 关键词: {keyword}, 报告类型: {report_type}")
-            logging.info(
-                f"内容选项: 摘要={include_summary}, 图表={include_charts}, 预测={include_predictions}, 建议={include_recommendations}")
-
-            # 从数据库获取真实数据
-            conn = None
-            try:
-                from utils.db_utils import get_connection
-                conn = get_connection()
-                if not conn:
-                    logging.error("数据库连接失败")
-                    return False
-
-                cursor = conn.cursor()
-
-                # 获取趋势数据
-                trend_data = []
-                cursor.execute(
-                    "SELECT date, index_value FROM baidu_index_trends WHERE keyword = %s ORDER BY date",
-                    (keyword,)
-                )
-                trend_data = cursor.fetchall()
-
-                # 获取年龄分布数据
-                age_data = []
-                cursor.execute(
-                    "SELECT name, rate FROM crowd_age_data WHERE keyword = %s",
-                    (keyword,)
-                )
-                age_data = cursor.fetchall()
-
-                # 获取性别分布数据
-                gender_data = []
-                cursor.execute(
-                    "SELECT name, rate FROM crowd_gender_data WHERE keyword = %s",
-                    (keyword,)
-                )
-                gender_data = cursor.fetchall()
-
-                # 获取兴趣分布数据
-                interest_data = []
-                cursor.execute(
-                    "SELECT name, rate FROM crowd_interest_data WHERE keyword = %s",
-                    (keyword,)
-                )
-                interest_data = cursor.fetchall()
-
-                # 获取地域分布数据
-                region_data = []
-                cursor.execute(
-                    "SELECT province, value FROM crowd_region_data WHERE keyword = %s ORDER BY value DESC LIMIT 5",
-                    (keyword,)
-                )
-                region_data = cursor.fetchall()
-
-                # 获取需求数据
-                demand_data = []
-                cursor.execute(
-                    "SELECT word, pv FROM human_request_data WHERE keyword = %s ORDER BY pv DESC LIMIT 10",
-                    (keyword,)
-                )
-                demand_data = cursor.fetchall()
-
-            except Exception as db_error:
-                logging.error(f"获取数据时出错: {str(db_error)}")
-                # 如果无法获取数据，使用空列表
-                if not trend_data:
-                    trend_data = []
-                if not age_data:
-                    age_data = []
-                if not gender_data:
-                    gender_data = []
-                if not interest_data:
-                    interest_data = []
-                if not region_data:
-                    region_data = []
-                if not demand_data:
-                    demand_data = []
-            finally:
-                if conn:
-                    conn.close()
-
-            # 创建报告内容
-            current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M")
-
-            # 创建HTML报告
-            html_content = f"""<!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>{keyword} {report_type}报告</title>
-                <style>
-                    body {{ font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }}
-                    h1 {{ color: #2196F3; text-align: center; }}
-                    h2 {{ color: #0D47A1; margin-top: 20px; }}
-                    .time {{ color: #757575; font-style: italic; margin-bottom: 20px; text-align: center; }}
-                    .summary {{ background-color: #E3F2FD; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
-                    .section {{ margin-top: 30px; background-color: #F5F5F5; padding: 15px; border-radius: 5px; }}
-                    .highlight {{ font-weight: bold; color: #0D47A1; }}
-                    .competitor-chart {{ background-color: #F5F5F5; padding: 15px; border-radius: 5px; margin-top: 15px; }}
-                    .prediction {{ background-color: #E8F5E9; padding: 15px; border-radius: 5px; margin-top: 15px; }}
-                    .recommendation {{ background-color: #FFF8E1; padding: 15px; border-radius: 5px; margin-top: 15px; }}
-                </style>
-            </head>
-            <body>
-                <h1>{keyword} {report_type}报告</h1>
-                <p class="time">生成时间: {current_time}</p>
-                """
-
-            # 分析趋势数据
-            trend_summary = ""
-            trend_direction = "稳定"
-            trend_volatility = "低"
-            trend_peak = "无明显峰值"
-            trend_recent = "保持平稳"
-
-            if trend_data and len(trend_data) > 1:
-                # 计算趋势基本信息
-                values = [val for _, val in trend_data if val is not None]
-                if values:
-                    start_value = values[0]
-                    end_value = values[-1]
-                    max_value = max(values)
-                    min_value = min(values)
-                    avg_value = sum(values) / len(values)
-
-                    # 判断整体趋势方向
-                    if end_value > start_value * 1.1:
-                        trend_direction = "上升"
-                    elif end_value < start_value * 0.9:
-                        trend_direction = "下降"
-
-                    # 判断波动性
-                    if max_value > avg_value * 1.5:
-                        trend_volatility = "高"
-                    elif max_value > avg_value * 1.2:
-                        trend_volatility = "中"
-
-                    # 查找峰值
-                    peak_index = values.index(max_value)
-                    if peak_index > 0 and peak_index < len(trend_data) - 1:
-                        peak_date = trend_data[peak_index][0]
-                        if hasattr(peak_date, 'strftime'):
-                            peak_date = peak_date.strftime('%Y年%m月')
-                        trend_peak = f"在{peak_date}达到峰值"
-
-                    # 最近走势
-                    recent_values = values[-min(6, len(values)):]
-                    if len(recent_values) > 1:
-                        recent_start = recent_values[0]
-                        recent_end = recent_values[-1]
-                        if recent_end > recent_start * 1.1:
-                            trend_recent = "呈上升趋势"
-                        elif recent_end < recent_start * 0.9:
-                            trend_recent = "呈下降趋势"
-                        else:
-                            trend_recent = "保持平稳"
-
-            # 生成摘要
-            if include_summary:
-                # 提取年龄信息
-                age_group = "不详"
-                if age_data:
-                    max_age = max(age_data, key=lambda x: x[1])
-                    age_group = max_age[0]
-
-                # 性别比例
-                gender_ratio = "不详"
-                if gender_data:
-                    gender_ratio = "、".join([f"{name}占{rate:.1f}%" for name, rate in gender_data])
-
-                # 兴趣偏好
-                interests = "不详"
-                if interest_data:
-                    interests = "、".join([name for name, _ in interest_data[:3]])
-
-                # 地域信息
-                regions = "全国各地"
-                if region_data:
-                    regions = "、".join([region for region, _ in region_data[:3]])
-
-                html_content += f"""
-                <div class="summary">
-                    <h2>报告摘要</h2>
-                    <p>本报告对"{keyword}"的搜索指数和用户画像进行了全面分析。研究数据显示，该关键词总体呈<span class="highlight">{trend_direction}</span>趋势，
-                    波动性<span class="highlight">{trend_volatility}</span>，{trend_peak}。最近一段时间内，搜索指数{trend_recent}。</p>
-
-                    <p>用户画像分析显示，搜索该关键词的用户主要集中在<span class="highlight">{age_group}</span>年龄段，性别比例为{gender_ratio}，
-                    主要兴趣包括{interests}。地域分布上，<span class="highlight">{regions}</span>的用户搜索量较大。</p>
-
-                    <p>基于这些数据，建议针对主要用户群体优化产品和营销策略，并关注相关市场趋势的变化。</p>
-                </div>
-                """
-
-            # 趋势分析部分 - 使用文字总结代替完整数据表格
-            if include_charts:
-                html_content += f"""
-                <div class="section">
-                    <h2>搜索趋势分析</h2>
-                """
-
-                if trend_data and len(trend_data) > 1:
-                    # 获取日期范围
-                    start_date = trend_data[0][0]
-                    end_date = trend_data[-1][0]
-                    if hasattr(start_date, 'strftime'):
-                        start_date = start_date.strftime('%Y年%m月%d日')
-                    if hasattr(end_date, 'strftime'):
-                        end_date = end_date.strftime('%Y年%m月%d日')
-
-                    # 计算趋势数据
-                    values = [val for _, val in trend_data if val is not None]
-                    if values:
-                        start_value = values[0]
-                        end_value = values[-1]
-                        max_value = max(values)
-                        min_value = min(values)
-                        avg_value = sum(values) / len(values)
-
-                        # 计算变化百分比
-                        change_percent = ((end_value - start_value) / start_value * 100) if start_value > 0 else 0
-                        change_text = f"上升了{change_percent:.1f}%" if change_percent > 0 else f"下降了{abs(change_percent):.1f}%" if change_percent < 0 else "基本保持不变"
-
-                        # 查找最高点和最低点
-                        peak_index = values.index(max_value)
-                        valley_index = values.index(min_value)
-                        peak_date = trend_data[peak_index][0]
-                        valley_date = trend_data[valley_index][0]
-
-                        if hasattr(peak_date, 'strftime'):
-                            peak_date = peak_date.strftime('%Y年%m月%d日')
-                        if hasattr(valley_date, 'strftime'):
-                            valley_date = valley_date.strftime('%Y年%m月%d日')
-
-                        # 将分析结果展示为文字总结
-                        html_content += f"""
-                        <p>分析周期: <span class="highlight">{start_date}</span> 至 <span class="highlight">{end_date}</span></p>
-
-                        <p>在分析的{len(trend_data)}个数据点中，"{keyword}"的搜索指数总体{change_text}。
-                        期间最高指数为<span class="highlight">{max_value}</span>（{peak_date}），
-                        最低指数为<span class="highlight">{min_value}</span>（{valley_date}），
-                        平均指数为<span class="highlight">{avg_value:.1f}</span>。</p>
-                        """
-
-                        # 根据趋势特点给出分析
-                        if change_percent > 20:
-                            html_content += f"""<p>数据显示该关键词搜索热度<span class="highlight">增长迅速</span>，表明市场对此领域的兴趣正在快速提升。</p>"""
-                        elif change_percent < -20:
-                            html_content += f"""<p>数据显示该关键词搜索热度<span class="highlight">明显下降</span>，可能表明市场关注点正在转移。</p>"""
-                        elif abs(change_percent) <= 5:
-                            html_content += f"""<p>数据显示该关键词搜索热度<span class="highlight">相对稳定</span>，表明市场对此的需求处于稳定状态。</p>"""
-
-                        # 添加季节性分析
-                        if len(trend_data) > 30:
-                            html_content += """<p>长期数据分析显示，"""
-                            if max(values) > avg_value * 1.5 and min(values) < avg_value * 0.5:
-                                html_content += """该关键词搜索存在<span class="highlight">明显的波动性</span>，可能受季节性或特定事件影响。</p>"""
-                            else:
-                                html_content += """该关键词搜索热度相对<span class="highlight">稳定持续</span>，未显示明显的季节性波动。</p>"""
-                else:
-                    html_content += """<p>暂无足够数据进行趋势分析。</p>"""
-
-                html_content += """
-                </div>
-                """
-
-                # 人群画像分析 - 文字总结
-                html_content += """
-                <div class="section">
-                    <h2>人群画像分析</h2>
-                """
-
-                # 年龄分析
-                if age_data:
-                    max_age = max(age_data, key=lambda x: x[1])
-                    sorted_ages = sorted(age_data, key=lambda x: x[1], reverse=True)
-
-                    html_content += f"""
-                    <p><strong>年龄分布:</strong> 搜索该关键词的用户主要集中在<span class="highlight">{max_age[0]}</span>年龄段，
-                    占比达到<span class="highlight">{max_age[1]:.1f}%</span>。
-                    """
-
-                    if len(sorted_ages) > 1:
-                        html_content += f"""其次是{sorted_ages[1][0]}（{sorted_ages[1][1]:.1f}%）"""
-                        if len(sorted_ages) > 2:
-                            html_content += f"""和{sorted_ages[2][0]}（{sorted_ages[2][1]:.1f}%）"""
-
-                    html_content += "。</p>"
-
-                    # 年龄特征分析
-                    if "19岁以下" in [age[0] for age in sorted_ages[:2]]:
-                        html_content += """<p>年轻用户比例较高，建议产品设计和营销内容更贴近年轻人喜好。</p>"""
-                    elif "50岁以上" in [age[0] for age in sorted_ages[:2]]:
-                        html_content += """<p>中老年用户比例较高，建议产品设计考虑易用性和功能实用性。</p>"""
-
-                # 性别分析
-                if gender_data and len(gender_data) > 1:
-                    male_rate = 0
-                    female_rate = 0
-                    for name, rate in gender_data:
-                        if "男" in name:
-                            male_rate = rate
-                        elif "女" in name:
-                            female_rate = rate
-
-                    dominant_gender = "男性" if male_rate > female_rate else "女性"
-                    ratio = max(male_rate, female_rate) / min(male_rate, female_rate) if min(male_rate,
-                                                                                             female_rate) > 0 else 0
-
-                    html_content += f"""
-                    <p><strong>性别分布:</strong> 搜索该关键词的用户中，<span class="highlight">{dominant_gender}</span>占主导，
-                    男女比例约为{male_rate:.1f}:{female_rate:.1f}。"""
-
-                    if ratio > 2:
-                        html_content += f"性别差异<span class=\"highlight\">显著</span>，建议重点关注{dominant_gender}用户需求。"
-                    else:
-                        html_content += "男女分布较为平衡，建议兼顾不同性别用户需求。"
-
-                    html_content += "</p>"
-
-                # 地域分布
-                if region_data:
-                    top_regions = region_data[:3]
-                    region_names = [name for name, _ in top_regions]
-
-                    html_content += f"""
-                    <p><strong>地域分布:</strong> 搜索热度主要集中在<span class="highlight">{'、'.join(region_names)}</span>等地区。
-                    """
-
-                    # 判断是否集中在一线城市
-                    first_tier = ["北京", "上海", "广州", "深圳"]
-                    if any(city in name for name, _ in top_regions for city in first_tier):
-                        html_content += "一线城市用户关注度较高，表明产品/服务在发达地区有较大市场。"
-                    elif all(("省" in name or "自治区" in name) for name, _ in top_regions):
-                        html_content += "主要分布在省级行政区，表明产品/服务在全国范围内有广泛需求。"
-
-                    html_content += "</p>"
-
-                html_content += """
-                </div>
-                """
-
-            # 需求分析 - 文字总结
-            if include_predictions and demand_data:
-                html_content += """
-                <div class="section">
-                    <h2>需求分析</h2>
-                """
-
-                if demand_data:
-                    top_demands = demand_data[:5]
-                    html_content += f"""
-                    <p><strong>热门搜索词:</strong> 与"{keyword}"相关的热门搜索包括
-                    <span class="highlight">{'、'.join([word for word, _ in top_demands])}</span>。</p>
-
-                    <p>这表明用户在搜索{keyword}时，主要关注以下几个方面：</p>
-                    <ul>
-                    """
-
-                    # 分析搜索词特点
-                    has_price = any("价格" in word or "多少钱" in word for word, _ in top_demands)
-                    has_brand = any("品牌" in word or "排行" in word for word, _ in top_demands)
-                    has_function = any("怎么" in word or "如何" in word or "功能" in word for word, _ in top_demands)
-
-                    if has_price:
-                        html_content += "<li>产品或服务的<span class=\"highlight\">价格因素</span>，表明价格是用户决策的重要考量</li>"
-                    if has_brand:
-                        html_content += "<li>关注<span class=\"highlight\">品牌和排名</span>，表明用户在寻找可靠和有口碑的选择</li>"
-                    if has_function:
-                        html_content += "<li>产品的<span class=\"highlight\">功能和使用方法</span>，表明用户关注实用性和易用性</li>"
-
-                    html_content += f"""
-                    <li>搜索词中的高频内容反映了用户对{keyword}的主要需求和关注点</li>
-                    </ul>
-                    """
-
-                html_content += """
-                </div>
-                """
-
-            # 分析建议部分保持不变，因为已经是总结性的
-            if include_recommendations:
-                # 分析建议基于实际数据
-                recommendations = []
-
-                # 基于热门地区的建议
-                if region_data:
-                    top_regions = [region for region, _ in region_data[:3]]
-                    recommendations.append(f"在{'、'.join(top_regions)}等热门地区增加营销投入")
-
-                # 基于人群特征的建议
-                if age_data:
-                    max_age = max(age_data, key=lambda x: x[1])
-                    recommendations.append(f"针对{max_age[0]}年龄段用户优化产品设计和营销内容")
-
-                # 基于兴趣特征的建议
-                if interest_data:
-                    top_interests = [interest for interest, _ in interest_data[:2]]
-                    recommendations.append(f"结合用户对{'和'.join(top_interests)}的兴趣，开发相关功能或内容")
-
-                # 基于需求词的建议
-                if demand_data:
-                    top_demands = [word for word, _ in demand_data[:2]]
-                    recommendations.append(f"针对用户关注的{'和'.join(top_demands)}等热门话题，提供专业内容")
-
-                # 基于趋势的建议
-                if trend_data and len(trend_data) > 1:
-                    values = [val for _, val in trend_data if val is not None]
-                    if values:
-                        start_value = values[0]
-                        end_value = values[-1]
-                        change_percent = ((end_value - start_value) / start_value * 100) if start_value > 0 else 0
-
-                        if change_percent > 20:
-                            recommendations.append("把握搜索热度上升趋势，加大市场投入力度")
-                        elif change_percent < -20:
-                            recommendations.append("关注搜索热度下降趋势，寻找新的增长点")
-
-                # 通用建议
-                recommendations.append("持续跟踪市场趋势，及时调整产品策略")
-
-                # 如果没有足够的建议，添加一些通用的
-                if len(recommendations) < 3:
-                    recommendations.append("建立完整的用户转化渠道，提高获客效率")
-                    recommendations.append("优化搜索引擎营销策略，提升曝光和点击率")
-
-                html_content += """
-                <div class="section">
-                    <h2>分析建议</h2>
-                    <div class="recommendation">
-                        <ol>
-                """
-
-                for recommendation in recommendations[:5]:  # 最多显示5条建议
-                    html_content += f"""
-                            <li>{recommendation}</li>
-                    """
-
-                html_content += """
-                        </ol>
-                    </div>
-                </div>
-                """
-
-            # 结束HTML文档
-            html_content += """
-            </body>
-            </html>"""
-
-            # 保存HTML文件
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(html_content)
-
-            logging.info(f"HTML报告已成功生成: {file_path}")
-            return True
-
-        except Exception as e:
-            logging.error(f"创建HTML报告失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return False
+            logging.error(f"清除数据库数据失败: {str(e)}")
+            QMessageBox.warning(self, "清理失败", f"清除数据库数据失败: {str(e)}")

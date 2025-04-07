@@ -293,26 +293,26 @@ class LoginWindow(QMainWindow):
         """验证登录信息"""
         try:
             logging.debug(f"开始验证登录信息 - 用户名: {username}")
-            
+
             if not self.db.connect():
                 logging.error("数据库连接失败")
                 QMessageBox.warning(self, "错误", "数据库连接失败，请稍后重试！")
                 return False, None
-                
+
             logging.debug("数据库连接成功")
-            
+
             # 获取用户信息和上次登录时间
             query = "SELECT id, last_login FROM users WHERE username = %s AND password = %s"
             logging.debug(f"执行查询语句: {query}")
             logging.debug(f"查询参数: username={username}")
-            
+
             self.db.cursor.execute(query, (username, password))
             result = self.db.cursor.fetchone()
-            
+
             if result:
                 user_id, last_login = result
                 logging.debug(f"找到用户记录 - ID: {user_id}, 上次登录时间: {last_login}")
-                
+
                 # 更新最后登录时间
                 update_query = "UPDATE users SET last_login = NOW() WHERE id = %s"
                 logging.debug(f"执行更新语句: {update_query}, 参数: id={user_id}")
@@ -332,7 +332,7 @@ class LoginWindow(QMainWindow):
                     logging.warning("用户名不存在")
                     QMessageBox.warning(self, "错误", "用户名不存在！")
                 return False, None
-                
+
         except Exception as e:
             logging.error(f"登录验证失败：{str(e)}")
             QMessageBox.warning(self, "错误", f"登录验证失败：{str(e)}\n请稍后重试！")
@@ -358,14 +358,14 @@ class LoginWindow(QMainWindow):
         """显示注册窗口"""
         try:
             logging.info("开始加载注册窗口...")
-            
+
             # 检查register_window.py文件是否存在
             register_file = os.path.join(os.path.dirname(__file__), 'register_window.py')
             if not os.path.exists(register_file):
                 logging.error(f"注册窗口文件不存在: {register_file}")
                 QMessageBox.warning(self, "错误", "注册窗口文件不存在，请检查系统文件是否完整！")
                 return
-                
+
             # 尝试导入RegisterWindow类
             try:
                 from gui.register_window import RegisterWindow
@@ -374,7 +374,7 @@ class LoginWindow(QMainWindow):
                 logging.error(f"导入RegisterWindow失败: {str(e)}")
                 QMessageBox.warning(self, "错误", "无法加载注册窗口，请检查系统文件是否完整！")
                 return
-            
+
             # 创建注册窗口实例
             try:
                 self.register_window = RegisterWindow(self)
@@ -383,7 +383,7 @@ class LoginWindow(QMainWindow):
                 logging.error(f"创建RegisterWindow实例失败: {str(e)}")
                 QMessageBox.warning(self, "错误", "创建注册窗口失败，请稍后重试！")
                 return
-            
+
             # 显示注册窗口
             try:
                 self.register_window.show()
@@ -392,7 +392,7 @@ class LoginWindow(QMainWindow):
                 logging.error(f"显示注册窗口失败: {str(e)}")
                 QMessageBox.warning(self, "错误", "显示注册窗口失败，请稍后重试！")
                 return
-            
+
             # 隐藏登录窗口
             try:
                 self.hide()
@@ -401,7 +401,7 @@ class LoginWindow(QMainWindow):
                 logging.error(f"隐藏登录窗口失败: {str(e)}")
                 QMessageBox.warning(self, "错误", "切换窗口失败，请稍后重试！")
                 return
-                
+
         except Exception as e:
             logging.error(f"打开注册窗口时发生未知错误: {str(e)}")
             QMessageBox.warning(self, "错误", f"打开注册窗口失败：{str(e)}\n请稍后重试！")
