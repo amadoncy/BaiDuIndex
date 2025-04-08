@@ -283,27 +283,117 @@ class DatabaseConnection:
                 # 获取所有表名
                 cursor.execute("SHOW TABLES")
                 tables = [table[0] for table in cursor.fetchall()]
-                
+
                 # 排除需要保留的表
                 excluded_tables = ['users', 'area_codes', 'cookies']
                 tables_to_clear = [table for table in tables if table not in excluded_tables]
-                
+
                 # 临时禁用外键检查
                 cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
-                
+
                 # 清空所有不需要保留的表
                 for table in tables_to_clear:
                     cursor.execute(f"TRUNCATE TABLE `{table}`")
                     logging.info(f"已清空表: {table}")
-                
+
                 # 重新启用外键检查
                 cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
-                
+
                 self.connection.commit()
                 return True, tables_to_clear
         except Exception as e:
             logging.error(f"清空数据库表失败: {str(e)}")
             return False, []
+
+    def get_trend_data(self, keyword):
+        """获取趋势数据"""
+        try:
+            query = """
+                SELECT date, index_value
+                FROM baidu_index_trends
+                WHERE keyword = %s
+                ORDER BY date DESC
+            """
+            self.cursor.execute(query, (keyword,))
+            results = self.cursor.fetchall()
+            return [{'date': row[0], 'index': row[1]} for row in results]
+        except Exception as e:
+            logging.error(f"获取趋势数据失败: {str(e)}")
+            return []
+
+    def get_portrait_data(self, keyword):
+        """获取人群画像数据"""
+        try:
+            # 获取年龄分布数据
+            age_query = """
+                SELECT name, rate
+                FROM crowd_age_data
+                WHERE keyword = %s
+                ORDER BY created_at DESC
+            """
+            self.cursor.execute(age_query, (keyword,))
+            age_results = self.cursor.fetchall()
+            
+            # 获取性别分布数据
+            gender_query = """
+                SELECT name, rate
+                FROM crowd_gender_data
+                WHERE keyword = %s
+                ORDER BY created_at DESC
+            """
+            self.cursor.execute(gender_query, (keyword,))
+            gender_results = self.cursor.fetchall()
+            
+            # 获取兴趣分布数据
+            interest_query = """
+                SELECT name, rate
+                FROM crowd_interest_data
+                WHERE keyword = %s
+                ORDER BY created_at DESC
+            """
+            self.cursor.execute(interest_query, (keyword,))
+            interest_results = self.cursor.fetchall()
+            
+            return {
+                'age': [{'range': row[0], 'ratio': row[1]} for row in age_results],
+                'gender': [{'type': row[0], 'ratio': row[1]} for row in gender_results],
+                'interest': [{'type': row[0], 'ratio': row[1]} for row in interest_results]
+            }
+        except Exception as e:
+            logging.error(f"获取人群画像数据失败: {str(e)}")
+            return None
+
+    def get_demand_data(self, keyword):
+        """获取需求分布数据"""
+        try:
+            query = """
+                SELECT word, pv, ratio, sim
+                FROM human_request_data
+                WHERE keyword = %s
+                ORDER BY pv DESC
+            """
+            self.cursor.execute(query, (keyword,))
+            results = self.cursor.fetchall()
+            return [{'word': row[0], 'pv': row[1], 'ratio': row[2], 'sim': row[3]} for row in results]
+        except Exception as e:
+            logging.error(f"获取需求分布数据失败: {str(e)}")
+            return []
+
+    def get_region_data(self, keyword):
+        """获取地域分布数据"""
+        try:
+            query = """
+                SELECT province, value
+                FROM crowd_region_data
+                WHERE keyword = %s
+                ORDER BY value DESC
+            """
+            self.cursor.execute(query, (keyword,))
+            results = self.cursor.fetchall()
+            return [{'province': row[0], 'value': row[1]} for row in results]
+        except Exception as e:
+            logging.error(f"获取地域分布数据失败: {str(e)}")
+            return []
 
 
 class DatabaseManager:
