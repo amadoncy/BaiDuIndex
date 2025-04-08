@@ -23,9 +23,21 @@ from utils import db_utils
 from gui.data_display_window import DataDisplayWindow
 import random
 import time
+from matplotlib.backends.backend_qt5agg import FigureCanvas
+from matplotlib.figure import Figure
+from wordcloud import WordCloud
+import numpy as np
+from utils.db_utils import DatabaseConnection
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
+from queue import Queue
+import threading
+from utils.get_huamn_requestion_utils import get_human_request_data
+from utils.get_index_cookie_utils import get_index_cookie, get_login_user_info
 
 
 class DataCollectionThread(QThread):
+    """数据采集线程类"""
     progress_signal = pyqtSignal(str)
     finished_signal = pyqtSignal(bool, str)
 
@@ -37,7 +49,6 @@ class DataCollectionThread(QThread):
         self.area_code = area_code
         self.area_name = area_name
         self._is_running = True
-        # Get the base directory path
         self.base_dir = os.path.dirname(os.path.dirname(__file__))
 
     def stop(self):
@@ -76,8 +87,6 @@ class DataCollectionThread(QThread):
                 # 需求图谱数据采集
                 self.progress_signal.emit("正在采集需求图谱数据...")
                 try:
-                    # 调用需求图谱数据采集函数
-                    from utils.get_huamn_requestion_utils import get_human_request_data
                     success = get_human_request_data(self.keyword, self.username)
 
                     if success and self._is_running:
@@ -91,6 +100,56 @@ class DataCollectionThread(QThread):
         except Exception as e:
             if self._is_running:
                 self.finished_signal.emit(False, f"错误: {str(e)}")
+
+
+class KeywordDataCollectionThread(threading.Thread):
+    """多线程关键词数据采集类"""
+    _semaphore = threading.Semaphore(5)  # 类级别的信号量，限制最大线程数为5
+
+    def __init__(self, keyword, username, thread_id):
+        super().__init__()
+        self.keyword = keyword
+        self.username = username
+        self.thread_id = thread_id
+        self.result = None
+        self.base_dir = os.path.dirname(os.path.dirname(__file__))
+
+    def run(self):
+        try:
+            with KeywordDataCollectionThread._semaphore:
+                logging.info(f"线程 {self.thread_id} 开始获取关键词 '{self.keyword}' 的数据")
+                
+                # 获取cookies
+                cookies = get_index_cookie(self.username)
+                if not cookies:
+                    logging.error(f"线程 {self.thread_id} 获取cookies失败")
+                    return
+
+                # 获取需求图谱数据
+                success = get_human_request_data(self.keyword, self.username)
+                if not success:
+                    logging.error(f"线程 {self.thread_id} 获取需求图谱数据失败")
+                    return
+
+                # 获取趋势数据
+                trend_data = get_trend_utils(self.username, self.keyword)
+                if not trend_data:
+                    logging.error(f"线程 {self.thread_id} 获取趋势数据失败")
+                    return
+
+                # 获取人群画像数据
+                from utils.get_crowd_portrait_utils import get_crowd_portrait_data
+                portrait_success = get_crowd_portrait_data(self.keyword, self.base_dir)
+                if not portrait_success:
+                    logging.error(f"线程 {self.thread_id} 获取人群画像数据失败")
+                    return
+
+                self.result = True
+                logging.info(f"线程 {self.thread_id} 完成数据获取")
+
+        except Exception as e:
+            logging.error(f"线程 {self.thread_id} 执行出错: {str(e)}")
+            self.result = False
 
 
 class WelcomeWindow(QMainWindow):
@@ -389,6 +448,7 @@ class WelcomeWindow(QMainWindow):
                 {"title": "数据采集", "description": "开始收集养老需求数据"},
                 {"title": "数据分析", "description": "分析已收集的数据"},
                 {"title": "数据展示", "description": "展示分析结果"},
+                {"title": "聚类分析", "description": "关键词聚类与分析"},
                 {"title": "数据报告", "description": "生成综合分析报告"},
                 {"title": "系统设置", "description": "调整系统配置"}
             ]
@@ -434,6 +494,7 @@ class WelcomeWindow(QMainWindow):
             self.content_stack.addWidget(self.create_data_collection_page())
             self.content_stack.addWidget(self.create_data_analysis_page())
             self.content_stack.addWidget(self.create_data_display_page())
+            self.content_stack.addWidget(self.create_cluster_analysis_page())
             self.content_stack.addWidget(self.create_export_page())
             self.content_stack.addWidget(self.create_settings_page())
 
@@ -802,7 +863,7 @@ class WelcomeWindow(QMainWindow):
             )
 
             # 如果有正在运行的线程，先停止它
-            if self.collection_thread and self.collection_thread.isRunning():
+            if hasattr(self, 'collection_thread') and self.collection_thread and self.collection_thread.isRunning():
                 self.collection_thread.stop()
                 self.collection_thread.wait()
 
@@ -1218,11 +1279,11 @@ class WelcomeWindow(QMainWindow):
         # 添加天气更新间隔设置
         weather_group = QGroupBox("天气更新设置")
         weather_layout = QVBoxLayout(weather_group)
-        
+
         weather_interval_label = QLabel("更新间隔（分钟）:")
         weather_interval_label.setStyleSheet("color: white;")
         weather_layout.addWidget(weather_interval_label)
-        
+
         weather_interval_spin = QSpinBox()
         weather_interval_spin.setRange(1, 60)
         weather_interval_spin.setValue(30)
@@ -1237,17 +1298,17 @@ class WelcomeWindow(QMainWindow):
         """)
         weather_interval_spin.valueChanged.connect(self.update_weather_interval)
         weather_layout.addWidget(weather_interval_spin)
-        
+
         settings_layout.addWidget(weather_group)
 
         # 添加字体大小设置
         font_group = QGroupBox("字体大小设置")
         font_layout = QVBoxLayout(font_group)
-        
+
         font_size_label = QLabel("字体大小:")
         font_size_label.setStyleSheet("color: white;")
         font_layout.addWidget(font_size_label)
-        
+
         font_size_spin = QSpinBox()
         font_size_spin.setRange(8, 20)
         font_size_spin.setValue(12)
@@ -1262,17 +1323,17 @@ class WelcomeWindow(QMainWindow):
         """)
         font_size_spin.valueChanged.connect(self.update_font_size)
         font_layout.addWidget(font_size_spin)
-        
+
         settings_layout.addWidget(font_group)
 
         # 添加主题设置
         theme_group = QGroupBox("主题设置")
         theme_layout = QVBoxLayout(theme_group)
-        
+
         theme_label = QLabel("选择主题:")
         theme_label.setStyleSheet("color: white;")
         theme_layout.addWidget(theme_label)
-        
+
         theme_combo = QComboBox()
         theme_combo.addItems(["深色主题", "浅色主题"])
         theme_combo.setStyleSheet("""
@@ -1294,13 +1355,13 @@ class WelcomeWindow(QMainWindow):
         """)
         theme_combo.currentTextChanged.connect(self.update_theme)
         theme_layout.addWidget(theme_combo)
-        
+
         settings_layout.addWidget(theme_group)
 
         # 添加数据缓存设置
         cache_group = QGroupBox("数据缓存设置")
         cache_layout = QVBoxLayout(cache_group)
-        
+
         clear_cache_btn = QPushButton("清除缓存")
         clear_cache_btn.setStyleSheet("""
             QPushButton {
@@ -1318,13 +1379,13 @@ class WelcomeWindow(QMainWindow):
         """)
         clear_cache_btn.clicked.connect(self.clear_cache)
         cache_layout.addWidget(clear_cache_btn)
-        
+
         settings_layout.addWidget(cache_group)
 
         # 添加团队信息设置
         team_group = QGroupBox("团队信息")
         team_layout = QVBoxLayout(team_group)
-        
+
         about_btn = QPushButton("查看团队信息")
         about_btn.setStyleSheet("""
             QPushButton {
@@ -1342,7 +1403,7 @@ class WelcomeWindow(QMainWindow):
         """)
         about_btn.clicked.connect(self.show_about)
         team_layout.addWidget(about_btn)
-        
+
         settings_layout.addWidget(team_group)
 
         layout.addWidget(settings_container)
@@ -5025,3 +5086,310 @@ class WelcomeWindow(QMainWindow):
             import traceback
             traceback.print_exc()
             return False
+
+    def create_cluster_analysis_page(self):
+        """创建聚类分析页面"""
+        page = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(20)
+
+        # 创建标题
+        title_label = QLabel("聚类分析")
+        title_label.setFont(QFont("Microsoft YaHei", 24, QFont.Bold))
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("""
+            QLabel {
+                color: white;
+                padding: 10px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+            }
+        """)
+        layout.addWidget(title_label)
+
+        # 创建标签页
+        tab_widget = QTabWidget()
+        tab_widget.setStyleSheet("""
+            QTabWidget {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+            }
+            QTabWidget::pane {
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                padding: 10px;
+            }
+            QTabBar::tab {
+                background: rgba(255, 255, 255, 0.1);
+                color: white;
+                padding: 8px 20px;
+                margin-right: 2px;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
+            }
+            QTabBar::tab:selected {
+                background: rgba(33, 150, 243, 0.8);
+            }
+        """)
+
+        # 添加热门关键词分析标签页
+        tab_widget.addTab(self.create_hot_keywords_tab(), "热门关键词分析")
+        tab_widget.addTab(self.create_keyword_data_tab(), "关键词数据获取")
+        tab_widget.addTab(self.create_cluster_result_tab(), "聚类结果展示")
+
+        layout.addWidget(tab_widget)
+        page.setLayout(layout)
+        return page
+
+    def create_hot_keywords_tab(self):
+        """创建热门关键词分析标签页"""
+        tab = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(20)
+
+        # 创建控制面板
+        control_layout = QHBoxLayout()
+
+        # 添加关键词输入框
+        keyword_label = QLabel("关键词:")
+        keyword_label.setStyleSheet("color: white;")
+        self.hot_keyword_input = QLineEdit()
+        self.hot_keyword_input.setStyleSheet("""
+            QLineEdit {
+                padding: 5px;
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                color: white;
+                min-width: 200px;
+            }
+        """)
+
+        # 添加获取按钮
+        self.get_hot_keywords_btn = QPushButton("获取热门关键词")
+        self.get_hot_keywords_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 20px;
+                background: rgba(33, 150, 243, 0.8);
+                border: none;
+                border-radius: 5px;
+                color: white;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: rgba(33, 150, 243, 1);
+            }
+        """)
+        self.get_hot_keywords_btn.clicked.connect(self.get_hot_keywords)
+
+        control_layout.addWidget(keyword_label)
+        control_layout.addWidget(self.hot_keyword_input)
+        control_layout.addWidget(self.get_hot_keywords_btn)
+        control_layout.addStretch()
+        layout.addLayout(control_layout)
+
+        # 创建词云显示区域
+        self.wordcloud_widget = QWidget()
+        self.wordcloud_widget.setStyleSheet("""
+            QWidget {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+            }
+        """)
+        layout.addWidget(self.wordcloud_widget)
+
+        tab.setLayout(layout)
+        return tab
+
+    def get_hot_keywords(self):
+        """从数据库获取热门关键词并生成词云"""
+        try:
+            keyword = self.hot_keyword_input.text().strip()
+            if not keyword:
+                self.show_message("错误", "请输入关键词")
+                return
+
+            # 从数据库获取数据
+            db = DatabaseConnection()
+            try:
+                # 查询前10个PV值最高的关键词
+                query = """
+                    SELECT word, pv 
+                    FROM human_request_data 
+                    WHERE word LIKE %s 
+                    ORDER BY pv DESC 
+                    LIMIT 10
+                """
+                db.cursor.execute(query, (f"%{keyword}%",))
+                results = db.cursor.fetchall()
+
+                if not results:
+                    self.show_message("提示", "未找到相关热门关键词")
+                    return
+
+                # 构建关键词字典
+                hot_keywords = {row[0]: float(row[1]) for row in results}
+                
+                # 启动多线程数据获取
+                username, _ = get_login_user_info()
+                if not username:
+                    self.show_message("错误", "获取用户信息失败")
+                    return
+
+                # 创建并启动线程
+                threads = []
+                for i, word in enumerate(hot_keywords.keys()):
+                    thread = KeywordDataCollectionThread(word, username, i+1)
+                    threads.append(thread)
+                    thread.start()
+
+                # 等待所有线程完成
+                for thread in threads:
+                    thread.join()
+
+                # 检查结果
+                failed_keywords = [t.keyword for t in threads if not t.result]
+                if failed_keywords:
+                    self.show_message("警告", f"以下关键词数据获取失败：\n{', '.join(failed_keywords)}")
+
+                # 生成词云
+                self.generate_wordcloud(hot_keywords)
+
+            finally:
+                db.close()
+
+        except Exception as e:
+            logging.error(f"获取热门关键词失败: {str(e)}")
+            self.show_message("错误", f"获取热门关键词失败: {str(e)}")
+
+    def generate_wordcloud(self, keywords):
+        """生成词云图"""
+        if not keywords:
+            self.show_message("错误", "没有关键词数据可供显示")
+            return
+
+        try:
+            # 创建Figure和Canvas
+            fig = Figure(figsize=(10, 6), facecolor='white')
+            canvas = FigureCanvas(fig)
+
+            # 清除之前的布局
+            if self.wordcloud_widget.layout():
+                for i in reversed(range(self.wordcloud_widget.layout().count())):
+                    item = self.wordcloud_widget.layout().itemAt(i)
+                    if item.widget():
+                        item.widget().setParent(None)
+            else:
+                self.wordcloud_widget.setLayout(QVBoxLayout())
+
+            # 设置新的布局
+            layout = self.wordcloud_widget.layout()
+            layout.addWidget(canvas)
+
+            # 生成词云
+            ax = fig.add_subplot(111)
+            ax.axis('off')
+            fig.patch.set_alpha(1.0)
+            ax.patch.set_alpha(1.0)
+
+            # 创建词云对象
+            wordcloud = WordCloud(
+                width=1200,
+                height=800,
+                background_color='white',
+                font_path='C:/Windows/Fonts/msyh.ttc',  # 使用微软雅黑字体
+                max_words=100,
+                max_font_size=120,
+                min_font_size=10,
+                random_state=42,
+                prefer_horizontal=0.7,
+                scale=2,
+                colormap='viridis',
+                relative_scaling=0.5,
+                margin=10
+            )
+
+            # 生成词云
+            wordcloud.generate_from_frequencies(keywords)
+
+            # 显示词云
+            ax.imshow(wordcloud, interpolation='bilinear')
+            canvas.draw()
+
+        except Exception as e:
+            logging.error(f"生成词云失败: {str(e)}")
+            self.show_message("错误", f"生成词云失败: {str(e)}")
+
+    def create_keyword_data_tab(self):
+        """创建关键词数据获取标签页"""
+        tab = QWidget()
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("关键词数据获取页面（待实现）"))
+        return tab
+
+    def create_cluster_result_tab(self):
+        """创建聚类结果展示标签页"""
+        tab = QWidget()
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("聚类结果展示页面（待实现）"))
+        return tab
+
+    def create_about_page(self):
+        """创建关于页面"""
+        page = QWidget()
+        layout = QVBoxLayout()
+        layout.setSpacing(20)
+
+        # 创建标题
+        title_label = QLabel("关于系统")
+        title_label.setFont(QFont("Microsoft YaHei", 24, QFont.Bold))
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("""
+            QLabel {
+                color: white;
+                padding: 10px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+            }
+        """)
+        layout.addWidget(title_label)
+
+        # 创建版本信息
+        version_label = QLabel("版本: 2.0.0")
+        version_label.setFont(QFont("Microsoft YaHei", 14))
+        version_label.setStyleSheet("color: white;")
+        version_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(version_label)
+
+        # 创建系统信息
+        info_text = """
+        <p style='color: white; font-size: 14px; line-height: 1.5;'>
+        养老需求分析系统是一个功能强大的数据采集与分析平台，支持多地区、多关键词的数据采集，
+        提供数据可视化、数据预测和人群画像分析，同时具备完善的用户管理系统。
+        </p>
+        <p style='color: white; font-size: 14px; line-height: 1.5;'>
+        主要功能：
+        • 支持全国、区域、省份、城市级别的数据采集
+        • 自动登录百度指数平台
+        • 支持多关键词数据采集
+        • 数据自动保存到Excel和本地数据库
+        • 人群画像分析功能
+        • 数据预测与趋势分析
+        • 数据可视化展示
+        </p>
+        """
+        info_label = QLabel(info_text)
+        info_label.setWordWrap(True)
+        info_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(info_label)
+
+        # 添加版权信息
+        copyright_label = QLabel("© 2024 养老需求分析系统 版权所有")
+        copyright_label.setFont(QFont("Microsoft YaHei", 12))
+        copyright_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
+        copyright_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(copyright_label)
+
+        layout.addStretch()
+        page.setLayout(layout)
+        return page
