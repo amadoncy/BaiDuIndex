@@ -111,6 +111,96 @@ class DatabaseConnection:
                 """)
                 logging.info("area_codes表创建成功")
 
+                # 创建关键词聚类表
+                logging.info("创建keyword_clusters表...")
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS keyword_clusters (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        base_keyword VARCHAR(100) NOT NULL,
+                        cluster_name VARCHAR(50) NOT NULL,
+                        keyword VARCHAR(100) NOT NULL,
+                        similarity FLOAT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_base_keyword (base_keyword)
+                    )
+                """)
+                logging.info("keyword_clusters表创建成功")
+
+                # 创建用户行为聚类表
+                logging.info("创建behavior_clusters表...")
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS behavior_clusters (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        keyword VARCHAR(100) NOT NULL,
+                        cluster_name VARCHAR(50) NOT NULL,
+                        behavior_type VARCHAR(50) NOT NULL,
+                        ratio FLOAT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_keyword (keyword)
+                    )
+                """)
+                logging.info("behavior_clusters表创建成功")
+
+                # 创建趋势预测表
+                logging.info("创建trend_predictions表...")
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS trend_predictions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        keyword VARCHAR(100) NOT NULL,
+                        prediction_date DATE NOT NULL,
+                        predicted_index INT NOT NULL,
+                        confidence FLOAT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_keyword (keyword)
+                    )
+                """)
+                logging.info("trend_predictions表创建成功")
+
+                # 创建需求预测表
+                logging.info("创建demand_predictions表...")
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS demand_predictions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        keyword VARCHAR(100) NOT NULL,
+                        predicted_demand VARCHAR(100) NOT NULL,
+                        probability FLOAT NOT NULL,
+                        growth_trend VARCHAR(20) NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_keyword (keyword)
+                    )
+                """)
+                logging.info("demand_predictions表创建成功")
+
+                # 创建竞品搜索指数表
+                logging.info("创建competitor_search_index表...")
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS competitor_search_index (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        keyword VARCHAR(100) NOT NULL,
+                        competitor_name VARCHAR(100) NOT NULL,
+                        search_index INT NOT NULL,
+                        market_share FLOAT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_keyword (keyword)
+                    )
+                """)
+                logging.info("competitor_search_index表创建成功")
+
+                # 创建竞品用户重叠表
+                logging.info("创建competitor_user_overlap表...")
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS competitor_user_overlap (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        keyword VARCHAR(100) NOT NULL,
+                        competitor_name VARCHAR(100) NOT NULL,
+                        user_overlap FLOAT NOT NULL,
+                        competition_level VARCHAR(20) NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_keyword (keyword)
+                    )
+                """)
+                logging.info("competitor_user_overlap表创建成功")
+
             self.connection.commit()
             logging.info("所有数据库表创建成功")
 
@@ -394,6 +484,99 @@ class DatabaseConnection:
         except Exception as e:
             logging.error(f"获取地域分布数据失败: {str(e)}")
             return []
+
+    def get_cluster_data(self, keyword):
+        """获取聚类分析数据"""
+        try:
+            # 获取关键词聚类数据
+            keyword_query = """
+                SELECT cluster_name, keyword, similarity
+                FROM keyword_clusters
+                WHERE base_keyword = %s
+                ORDER BY cluster_name, similarity DESC
+            """
+            self.cursor.execute(keyword_query, (keyword,))
+            keyword_results = self.cursor.fetchall()
+            
+            # 获取用户行为聚类数据
+            behavior_query = """
+                SELECT cluster_name, behavior_type, ratio
+                FROM behavior_clusters
+                WHERE keyword = %s
+                ORDER BY cluster_name, ratio DESC
+            """
+            self.cursor.execute(behavior_query, (keyword,))
+            behavior_results = self.cursor.fetchall()
+            
+            return {
+                'keywords': [{'cluster': row[0], 'keyword': row[1], 'similarity': row[2]} for row in keyword_results],
+                'behaviors': [{'cluster': row[0], 'behavior': row[1], 'ratio': row[2]} for row in behavior_results]
+            }
+        except Exception as e:
+            logging.error(f"获取聚类分析数据失败: {str(e)}")
+            return {'keywords': [], 'behaviors': []}
+
+    def get_prediction_data(self, keyword):
+        """获取预测分析数据"""
+        try:
+            # 获取趋势预测数据
+            trend_query = """
+                SELECT prediction_date, predicted_index, confidence
+                FROM trend_predictions
+                WHERE keyword = %s
+                ORDER BY prediction_date
+            """
+            self.cursor.execute(trend_query, (keyword,))
+            trend_results = self.cursor.fetchall()
+            
+            # 获取需求预测数据
+            demand_query = """
+                SELECT predicted_demand, probability, growth_trend
+                FROM demand_predictions
+                WHERE keyword = %s
+                ORDER BY probability DESC
+            """
+            self.cursor.execute(demand_query, (keyword,))
+            demand_results = self.cursor.fetchall()
+            
+            return {
+                'trend': [{'date': row[0], 'index': row[1], 'confidence': row[2]} for row in trend_results],
+                'demands': [{'demand': row[0], 'probability': row[1], 'trend': row[2]} for row in demand_results]
+            }
+        except Exception as e:
+            logging.error(f"获取预测分析数据失败: {str(e)}")
+            return {'trend': [], 'demands': []}
+
+    def get_competitor_data(self, keyword):
+        """获取竞品分析数据"""
+        try:
+            # 获取竞品搜索指数数据
+            index_query = """
+                SELECT competitor_name, search_index, market_share
+                FROM competitor_search_index
+                WHERE keyword = %s
+                ORDER BY search_index DESC
+            """
+            self.cursor.execute(index_query, (keyword,))
+            index_results = self.cursor.fetchall()
+            
+            # 获取用户重叠度数据
+            overlap_query = """
+                SELECT competitor_name, user_overlap, competition_level
+                FROM competitor_user_overlap
+                WHERE keyword = %s
+                ORDER BY user_overlap DESC
+            """
+            self.cursor.execute(overlap_query, (keyword,))
+            overlap_results = self.cursor.fetchall()
+            
+            return {
+                'search_index': [{'competitor': row[0], 'index': row[1], 'market_share': row[2]} for row in index_results],
+                'user_overlap': [{'competitor': row[0], 'overlap': row[1], 'competition': row[2]} for row in overlap_results]
+            }
+        except Exception as e:
+            logging.error(f"获取竞品分析数据失败: {str(e)}")
+            return {'search_index': [], 'user_overlap': []}
 
 
 class DatabaseManager:

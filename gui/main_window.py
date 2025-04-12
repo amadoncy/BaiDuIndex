@@ -26,11 +26,7 @@ import time
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.figure import Figure
 from wordcloud import WordCloud
-import numpy as np
 from utils.db_utils import DatabaseConnection
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
-from queue import Queue
 import threading
 from utils.get_huamn_requestion_utils import get_human_request_data
 from utils.get_index_cookie_utils import get_index_cookie, get_login_user_info
@@ -5229,7 +5225,7 @@ class WelcomeWindow(QMainWindow):
 
                 # 构建关键词字典
                 hot_keywords = {row[0]: float(row[1]) for row in results}
-                
+
                 # 保存关键词数据到类属性
                 self.wordcloud_keywords = hot_keywords
 
@@ -5257,7 +5253,7 @@ class WelcomeWindow(QMainWindow):
 
                 # 生成词云
                 self.generate_wordcloud(hot_keywords)
-                
+
                 # 显示成功消息
                 self.show_message("成功", "热门关键词获取成功")
 
@@ -5330,13 +5326,13 @@ class WelcomeWindow(QMainWindow):
         """创建关键词数据提取标签页"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        
+
         # 创建数据表格
         self.keyword_data_table = QTableWidget()
         self.keyword_data_table.setColumnCount(5)
         self.keyword_data_table.setHorizontalHeaderLabels(['关键词', '搜索指数', '人群画像', '需求分布', '地域分布'])
         self.keyword_data_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        
+
         # 创建按钮
         button_layout = QHBoxLayout()
         fetch_button = QPushButton('提取数据')
@@ -5345,17 +5341,17 @@ class WelcomeWindow(QMainWindow):
         analyze_button.clicked.connect(self.perform_cluster_analysis)
         button_layout.addWidget(fetch_button)
         button_layout.addWidget(analyze_button)
-        
+
         # 创建进度条
         self.keyword_progress = QProgressBar()
         self.keyword_progress.hide()
-        
+
         # 添加到布局
         layout.addWidget(QLabel('热门关键词数据'))
         layout.addWidget(self.keyword_data_table)
         layout.addLayout(button_layout)
         layout.addWidget(self.keyword_progress)
-        
+
         return tab
 
     def fetch_keyword_data(self):
@@ -5372,7 +5368,7 @@ class WelcomeWindow(QMainWindow):
 
             # 清空表格
             self.keyword_data_table.setRowCount(0)
-            
+
             # 获取当前登录用户信息
             username, _ = get_login_user_info()
             if not username:
@@ -5386,18 +5382,18 @@ class WelcomeWindow(QMainWindow):
 
             # 创建数据库连接
             db = DatabaseConnection()
-            
+
             try:
                 for keyword in keywords:
                     # 获取趋势数据
                     trend_data = db.get_trend_data(keyword)
                     avg_index = sum(float(d.get('index', 0)) for d in trend_data) / len(trend_data) if trend_data else 0
-                    
+
                     # 获取其他数据
                     portrait_data = db.get_portrait_data(keyword)
                     demand_data = db.get_demand_data(keyword)
                     region_data = db.get_region_data(keyword)
-                    
+
                     # 添加到表格
                     row = self.keyword_data_table.rowCount()
                     self.keyword_data_table.insertRow(row)
@@ -5406,17 +5402,17 @@ class WelcomeWindow(QMainWindow):
                     self.keyword_data_table.setItem(row, 2, QTableWidgetItem("已获取" if portrait_data else "未获取"))
                     self.keyword_data_table.setItem(row, 3, QTableWidgetItem("已获取" if demand_data else "未获取"))
                     self.keyword_data_table.setItem(row, 4, QTableWidgetItem("已获取" if region_data else "未获取"))
-                    
+
                     # 更新进度
                     current_progress += progress_step
                     self.keyword_progress.setValue(int(current_progress))
-                    
+
                 self.keyword_progress.setValue(100)
                 QMessageBox.information(self, "成功", "数据提取完成")
-                
+
             finally:
                 db.close()
-                
+
         except Exception as e:
             QMessageBox.warning(self, "错误", f"数据提取失败: {str(e)}")
             logging.error(f"数据提取失败: {str(e)}")
@@ -5441,14 +5437,14 @@ class WelcomeWindow(QMainWindow):
             # 准备数据进行聚类
             from sklearn.cluster import KMeans
             import numpy as np
-            
+
             # 提取搜索指数数据进行聚类
             X = np.array([d[1] for d in data]).reshape(-1, 1)
-            
+
             # 使用K-means聚类
             kmeans = KMeans(n_clusters=3, random_state=42)
             clusters = kmeans.fit_predict(X)
-            
+
             # 保存聚类结果
             self.cluster_results = {
                 'keywords': [d[0] for d in data],
@@ -5456,12 +5452,12 @@ class WelcomeWindow(QMainWindow):
                 'clusters': clusters.tolist(),
                 'cluster_centers': kmeans.cluster_centers_.flatten().tolist()
             }
-            
+
             # 更新第三个标签页
             self.update_cluster_results_tab()
-            
+
             QMessageBox.information(self, "成功", "聚类分析完成，请切换到第三个标签页查看结果")
-            
+
         except Exception as e:
             QMessageBox.warning(self, "错误", f"聚类分析失败: {str(e)}")
             logging.error(f"聚类分析失败: {str(e)}")
@@ -5470,59 +5466,59 @@ class WelcomeWindow(QMainWindow):
         """创建聚类结果展示标签页"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        
+
         # 创建结果展示区域
         self.cluster_result_text = QTextEdit()
         self.cluster_result_text.setReadOnly(True)
-        
+
         # 创建图表展示区域
         self.cluster_plot_widget = QWidget()
         self.cluster_plot_layout = QVBoxLayout(self.cluster_plot_widget)
-        
+
         # 添加到主布局
         layout.addWidget(QLabel('聚类分析结果'))
         layout.addWidget(self.cluster_result_text)
         layout.addWidget(self.cluster_plot_widget)
-        
+
         return tab
-        
+
     def update_cluster_results_tab(self):
         """更新聚类结果展示"""
         if not hasattr(self, 'cluster_results'):
             return
-            
+
         # 清空现有内容
         self.cluster_result_text.clear()
-        for i in reversed(range(self.cluster_plot_layout.count())): 
+        for i in reversed(range(self.cluster_plot_layout.count())):
             self.cluster_plot_layout.itemAt(i).widget().setParent(None)
-            
+
         # 生成结果报告
         report = self.generate_cluster_report()
         self.cluster_result_text.setHtml(report)
-        
+
         # 创建聚类可视化
         self.create_cluster_visualization()
-        
+
     def generate_cluster_report(self):
         """生成聚类分析报告"""
         if not hasattr(self, 'cluster_results'):
             return ""
-            
+
         # 获取聚类结果
         keywords = self.cluster_results['keywords']
         values = self.cluster_results['values']
         clusters = self.cluster_results['clusters']
         centers = self.cluster_results['cluster_centers']
-        
+
         # 将关键词按聚类分组
         cluster_groups = {i: [] for i in range(3)}
         for keyword, value, cluster in zip(keywords, values, clusters):
             cluster_groups[cluster].append((keyword, value))
-            
+
         # 生成HTML报告
         html = "<h3>聚类分析结果摘要</h3>"
         html += "<p>基于搜索指数对关键词进行聚类分析，共分为3个类别：</p>"
-        
+
         # 对聚类中心值进行排序，确定高中低分类
         center_indices = sorted(range(3), key=lambda i: centers[i], reverse=True)
         categories = ["高热度关键词", "中等热度关键词", "低热度关键词"]
@@ -5531,80 +5527,80 @@ class WelcomeWindow(QMainWindow):
             "这些关键词具有中等水平的搜索指数，代表稳定的关注度。",
             "这些关键词的搜索指数相对较低，可能是新兴或小众话题。"
         ]
-        
+
         for i, cluster_id in enumerate(center_indices):
             keywords_in_cluster = cluster_groups[cluster_id]
             avg_value = centers[cluster_id]
-            
+
             html += f"<h4>类别 {i + 1}: {categories[i]}</h4>"
             html += f"<p>{descriptions[i]}</p>"
             html += f"<p>中心值：{avg_value:.2f}</p>"
             html += "<p>包含的关键词：</p><ul>"
-            
+
             # 按搜索指数降序排序关键词
             sorted_keywords = sorted(keywords_in_cluster, key=lambda x: x[1], reverse=True)
             for keyword, value in sorted_keywords:
                 html += f"<li>{keyword} (搜索指数: {value:.2f})</li>"
-            
+
             html += "</ul>"
-            
+
         return html
-        
+
     def create_cluster_visualization(self):
         """创建聚类结果可视化"""
         if not hasattr(self, 'cluster_results'):
             return
-            
+
         import matplotlib.pyplot as plt
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
         import numpy as np
-        
+
         # 创建图表
         fig, ax = plt.subplots(figsize=(10, 6))
-        
+
         # 获取数据
         values = np.array(self.cluster_results['values'])
         clusters = np.array(self.cluster_results['clusters'])
         keywords = self.cluster_results['keywords']
         centers = np.array(self.cluster_results['cluster_centers'])
-        
+
         # 设置颜色方案
         colors = ['#FF9999', '#66B2FF', '#99FF99']
         cluster_names = ['高热度', '中等热度', '低热度']
-        
+
         # 创建散点图
         for i in range(3):
             mask = clusters == i
-            scatter = ax.scatter(np.arange(len(values))[mask], 
-                               values[mask],
-                               c=colors[i], 
-                               label=cluster_names[i], 
-                               alpha=0.6,
-                               s=100)
-            
+            scatter = ax.scatter(np.arange(len(values))[mask],
+                                 values[mask],
+                                 c=colors[i],
+                                 label=cluster_names[i],
+                                 alpha=0.6,
+                                 s=100)
+
         # 添加聚类中心线
         for i, center in enumerate(centers):
             ax.axhline(y=center, color=colors[i], linestyle='--', alpha=0.3)
-            
+
         # 添加关键词标签
         for i, (keyword, value) in enumerate(zip(keywords, values)):
-            ax.annotate(keyword, 
-                       (i, value), 
-                       textcoords="offset points", 
-                       xytext=(0, 10),
-                       ha='center',
-                       fontsize=8)
-            
+            ax.annotate(keyword,
+                        (i, value),
+                        textcoords="offset points",
+                        xytext=(0, 10),
+                        ha='center',
+                        fontsize=8)
+
         # 设置图表样式
         ax.set_title('关键词聚类分布图', fontsize=12, pad=20)
         ax.set_xlabel('关键词序号', fontsize=10)
         ax.set_ylabel('搜索指数', fontsize=10)
         ax.legend(title='聚类类别')
         ax.grid(True, linestyle='--', alpha=0.3)
-        
+
         # 调整布局
         plt.tight_layout()
-        
+
         # 创建画布并添加到界面
         canvas = FigureCanvas(fig)
         self.cluster_plot_layout.addWidget(canvas)
@@ -5659,7 +5655,7 @@ class WelcomeWindow(QMainWindow):
         layout.addWidget(info_label)
 
         # 添加版权信息
-        copyright_label = QLabel("© 2024 养老需求分析系统 版权所有")
+        copyright_label = QLabel("© 2025 养老需求分析系统 版权所有")
         copyright_label.setFont(QFont("Microsoft YaHei", 12))
         copyright_label.setStyleSheet("color: rgba(255, 255, 255, 0.7);")
         copyright_label.setAlignment(Qt.AlignCenter)
