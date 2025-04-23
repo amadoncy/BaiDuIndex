@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib
+from utils.data_prediction_utils import DataPredictionUtils
+import logging
 matplotlib.use('Qt5Agg')
 plt.style.use('dark_background')
 # 设置中文字体
 matplotlib.rcParams['font.sans-serif'] = ['Microsoft YaHei']  # 设置默认字体为微软雅黑
 matplotlib.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
-from utils.data_prediction_utils import DataPredictionUtils
-import logging
 
 class DataDisplayWindow(QWidget):
     def __init__(self, username=None, parent=None):
