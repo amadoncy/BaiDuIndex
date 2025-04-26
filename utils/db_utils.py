@@ -77,6 +77,7 @@ class DatabaseConnection:
                         password VARCHAR(255) NOT NULL,
                         phone VARCHAR(20) NOT NULL UNIQUE,
                         email VARCHAR(100) NOT NULL UNIQUE,
+                        role VARCHAR(20) NOT NULL DEFAULT 'user',
                         last_login TIMESTAMP NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
@@ -110,96 +111,6 @@ class DatabaseConnection:
                     )
                 """)
                 logging.info("area_codes表创建成功")
-
-                # 创建关键词聚类表
-                logging.info("创建keyword_clusters表...")
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS keyword_clusters (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        base_keyword VARCHAR(100) NOT NULL,
-                        cluster_name VARCHAR(50) NOT NULL,
-                        keyword VARCHAR(100) NOT NULL,
-                        similarity FLOAT NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_base_keyword (base_keyword)
-                    )
-                """)
-                logging.info("keyword_clusters表创建成功")
-
-                # 创建用户行为聚类表
-                logging.info("创建behavior_clusters表...")
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS behavior_clusters (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        keyword VARCHAR(100) NOT NULL,
-                        cluster_name VARCHAR(50) NOT NULL,
-                        behavior_type VARCHAR(50) NOT NULL,
-                        ratio FLOAT NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_keyword (keyword)
-                    )
-                """)
-                logging.info("behavior_clusters表创建成功")
-
-                # 创建趋势预测表
-                logging.info("创建trend_predictions表...")
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS trend_predictions (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        keyword VARCHAR(100) NOT NULL,
-                        prediction_date DATE NOT NULL,
-                        predicted_index INT NOT NULL,
-                        confidence FLOAT NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_keyword (keyword)
-                    )
-                """)
-                logging.info("trend_predictions表创建成功")
-
-                # 创建需求预测表
-                logging.info("创建demand_predictions表...")
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS demand_predictions (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        keyword VARCHAR(100) NOT NULL,
-                        predicted_demand VARCHAR(100) NOT NULL,
-                        probability FLOAT NOT NULL,
-                        growth_trend VARCHAR(20) NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_keyword (keyword)
-                    )
-                """)
-                logging.info("demand_predictions表创建成功")
-
-                # 创建竞品搜索指数表
-                logging.info("创建competitor_search_index表...")
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS competitor_search_index (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        keyword VARCHAR(100) NOT NULL,
-                        competitor_name VARCHAR(100) NOT NULL,
-                        search_index INT NOT NULL,
-                        market_share FLOAT NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_keyword (keyword)
-                    )
-                """)
-                logging.info("competitor_search_index表创建成功")
-
-                # 创建竞品用户重叠表
-                logging.info("创建competitor_user_overlap表...")
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS competitor_user_overlap (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        keyword VARCHAR(100) NOT NULL,
-                        competitor_name VARCHAR(100) NOT NULL,
-                        user_overlap FLOAT NOT NULL,
-                        competition_level VARCHAR(20) NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_keyword (keyword)
-                    )
-                """)
-                logging.info("competitor_user_overlap表创建成功")
 
             self.connection.commit()
             logging.info("所有数据库表创建成功")

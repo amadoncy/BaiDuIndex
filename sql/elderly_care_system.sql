@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主机： localhost
--- 生成日期： 2025-04-23 10:04:43
+-- 生成日期： 2025-04-26 22:22:53
 -- 服务器版本： 8.0.12
 -- PHP 版本： 7.3.4
 
@@ -475,9 +475,9 @@ CREATE TABLE `cookies` (
 --
 
 INSERT INTO `cookies` (`id`, `username`, `cookie_data`, `created_at`) VALUES
-(1, '18584855132', '{\"RT\": \"\\\"z=1&dm=baidu.com&si=acee20c1-27e3-44da-b715-9e09ccd2cddc&ss=m9qgyyzp&sl=4&tt=582&bcn=https%3A%2F%2Ffclog.baidu.com%2Flog%2Fweirwood%3Ftype%3Dperf&ld=kww\\\"\", \"XFI\": \"1c524910-1e5a-11f0-9e25-1f6de957b71b\", \"XFT\": \"F6nIVSKCSjbXWHnDv1D1G5JD618El+fevkSX4tfxR5Q=\", \"XFCS\": \"EE83FD789FE782120A785F7094F105902D72703558F71E175044074083601F5D\", \"BDUSS\": \"1HTWc5dn5jenZMVHNCREhkS3Axfn5saUJ4VWRwVHlqM08yOEppSE5laGtQUzFvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGSwBWhksAVoVU\", \"ab_sr\": \"1.0.1_ZTQxNjU2NjIzY2UxOTQ2OGZlYmUwM2UwYzNlNDM2Y2QzYTU5YjdmOWIxZDJiOTRkMjYzMTIzOGM0MWQ4NWRmNTdhMzI0NjJjNjI5ZDA1NThiNjdjYTU1ZWM0NzdmNDViMDE5NmIwYmY3N2IxZmEwZjg3NWRhM2Y1NDJjOGYwYjEwYjhmMmJkYjY4NzZiN2E4YzIwZTE5ODU1NjQ4NzJhNw==\", \"ppfuid\": \"FOCoIC3q5fKa8fgJnwzbE67EJ49BGJeplOzf+4l4EOvDuu2RXBRv6R3A1AZMa49I27C0gDDLrJyxcIIeAeEhD8JYsoLTpBiaCXhLqvzbzmvy3SeAW17tKgNq/Xx+RgOdb8TWCFe62MVrDTY6lMf2GrfqL8c87KLF2qFER3obJGmxOaJD7Qr04D9rET96PX99GEimjy3MrXEpSuItnI4KD2P5vWa8VVdqKPLBckQ0Wyrci+eNtO+sUfx41sINYk+w1Rc/idC7NbMP5tI+OCibu4QEDrX7W9h8cppUHyBtTX3GgLbz7OSojK1zRbqBESR5Pdk2R9IA3lxxOVzA+Iw1TWLSgWjlFVG9Xmh1+20oPSbrzvDjYtVPmZ+9/6evcXmhcO1Y58MgLozKnaQIaLfWRHYJbniad6MOTaDR3XV1dTLxUSUZS0ReZYJMPG6nCsxNJlhI2UyeJA6QroZFMelR7tnTNS/pLMWceus0e757/UPzWCk2doxxowOinC9vxVcqAAv3LCf1Y7/fHL3PTSf9vid/u2VLX4h1nBtx8EF07eCMhWVv+2qjbPV7ZhXk3reaWRFEeso3s/Kc9n/UXtUfNU1sHiCdbrCW5yYsuSM9SPGDZsl7FhTAKw7qIu38vFZiq+DRc8Vbf7jOiN9xPe0lOdZHUhGHZ82rL5jTCsILwcRVCndrarbwmu7G154MpYiKmTXZkqV7Alo4QZzicdyMbWvwvmR2/m//YVTM8qeZWgDSHjDmtehgLWM45zARbPujeqU0T92Gmgs89l2htrSKIcpPX9uJt95pVShWvlWoxLISiPJAl5f8YjYL/FdCmcLTae8Ul2BRT6S+MmtwuZGX5pdImdyxYIjA1uSy2hfTFv/d3cnXH4nh+maaicAPllDgrppZTr0lDf2Vsiy73L8egP9ck5gsaaSE4obz9V1JGvyp8lNw+IyCN2Gou0efGgcY+cwmJir9ukThjX3rfeTtf8pka5Gmp2HPTDByexF73IJrGRChHnhPuJeIKACPXiVuli9ItRLEkdb1mLxNHAk3uJy88YX/Rf/sKUjR12zxRTDxxJNDJS+Dlsbqu3n4I65ujli/3rQ8Zk1MjmTOsz9+kTqOM4upsnQ6IWq/zeZTItMCgHpQhuhr4ip73honuzoJhfJJqPUSX01viD97GXfw7kf+R6as3JPAEXsdOdDsWEAgJn+ZMVrELI7pXz8Jko9Xv3uSDHo/C3kmFLrauvEYpUg3FbqEqM6JmRHqkwRhSJQtmfffhEiJHXdZXgTikpxSzRszeYvFyXCPSuJ5oyoOgoCPKXE8fX73WOZ0mAlF1mc=\", \"BAIDUID\": \"7D900A94DFAD9EB154C5582279809AA8:FG=1\", \"CPID_212\": \"60952149\", \"CPTK_212\": \"226162791\", \"HMACCOUNT\": \"8F96895D73936F7A\", \"SIGNIN_UC\": \"70a2711cf1d3d9b1a82d2f87d633bd8a04952157499pfPnuFeyG6gOeeGymYX%2FLTGlrOsml%2FrR%2F9EDEQZKVvUbkqvJmDR98MYiBmpArcPRbkb7u2cEP43HYJ3uQRhpMRO3%2BNZMCMgXNfgXAY5XaG%2FOcC%2Bqa8Z3TWxxny4aECgb5QkMhoArrqO2AeHGH0SJ5voOF37u9hN1ncEYNba%2Ft4oowRGDb5WmJPW5VHMuB1a65mudLwHCyzBmWzjr6FoTlBc9r07TIMzKIjsupfGXlsKaY7j65cGtJ50NLVKDUZcne75Wk4Z%2FNGBVXqlzvvt%2F632PaPgCnDaFjkTCJsqws1Q%3D89738713518781032994974015017902\", \"bdindexid\": \"9u9osvvv52g4451b7ntas1jle3\", \"BDUSS_BFESS\": \"1HTWc5dn5jenZMVHNCREhkS3Axfn5saUJ4VWRwVHlqM08yOEppSE5laGtQUzFvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGSwBWhksAVoVU\", \"__cas__rn__\": \"495215749\", \"BAIDUID_BFESS\": \"7D900A94DFAD9EB154C5582279809AA8:FG=1\", \"__cas__id__212\": \"60952149\", \"__cas__st__212\": \"122d535c9366084683b29926d03267f9a44f17794813546801e155ae1c33417279121ba64133fe96cdfea80d\", \"Hm_lvt_d101ea4d2a5c67dab98251f0b5de24dc\": \"1745203279\", \"Hm_lpvt_d101ea4d2a5c67dab98251f0b5de24dc\": \"1745203303\"}', '2025-04-21 02:41:47'),
+(1, '18584855132', '{\"RT\": \"\\\"z=1&dm=baidu.com&si=00be8a3e-a6dc-4bc4-ac56-8a578caec39e&ss=m984iqca&sl=7&tt=5m6&bcn=https%3A%2F%2Ffclog.baidu.com%2Flog%2Fweirwood%3Ftype%3Dperf&ld=it1\\\"\", \"XFI\": \"51950390-1443-11f0-991d-a9b7031a1cd4\", \"XFT\": \"NiZHuvXR51PfummuKkD2gaKCbT0fLJpra19Vo2wID5c=\", \"XFCS\": \"16501F1384BC43C9D24883E7011B6F0D08A97B7DBC6975EB8D44F0AF95F63F65\", \"BDUSS\": \"lktZ29hNVoxcUwtNVk3U3FFMnRsQVhMTGJDMjZnQndsUEVRUFZiNjQxd3BVQnhvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACnD9Gcpw~RnQ\", \"ab_sr\": \"1.0.1_ZjY5MzI0ODgxY2IzMjIyNzhmMjhhZTRhZTBjZjk2ZDdhN2EwZDlhMzY0ZTcyNTQwZjQxN2YzY2RiOGU5OTRjY2JkYTcyNzM0ZGM2Mjk0MzMxNjhkODIwNWNiZjdmMjVhZWY4Mjc0YzAyMDg3MGNhMGJmNjU0NmU3MDYyZDhhZmZhNDZmYmJlN2Q0ODRkYWE5ZTRmNGRlODU5ZDQxZGY2ZQ==\", \"ppfuid\": \"FOCoIC3q5fKa8fgJnwzbE67EJ49BGJeplOzf+4l4EOvDuu2RXBRv6R3A1AZMa49I27C0gDDLrJyxcIIeAeEhD8JYsoLTpBiaCXhLqvzbzmvy3SeAW17tKgNq/Xx+RgOdb8TWCFe62MVrDTY6lMf2GrfqL8c87KLF2qFER3obJGmxOaJD7Qr04D9rET96PX99GEimjy3MrXEpSuItnI4KD2P5vWa8VVdqKPLBckQ0WyrgwNSQKKIDdXA6eDfuiw2FJ3ZBF1sLBqLP1Lik2nWCKk4sXpnMWzrlcw817brPPlfGgLbz7OSojK1zRbqBESR5Pdk2R9IA3lxxOVzA+Iw1TWLSgWjlFVG9Xmh1+20oPSbrzvDjYtVPmZ+9/6evcXmhcO1Y58MgLozKnaQIaLfWRHYJbniad6MOTaDR3XV1dTLxUSUZS0ReZYJMPG6nCsxNJlhI2UyeJA6QroZFMelR7tnTNS/pLMWceus0e757/UMPmrThfasmhDJrMFcBfoSrAAv3LCf1Y7/fHL3PTSf9vid/u2VLX4h1nBtx8EF07eCMhWVv+2qjbPV7ZhXk3reaWRFEeso3s/Kc9n/UXtUfNU1sHiCdbrCW5yYsuSM9SPGDZsl7FhTAKw7qIu38vFZiq+DRc8Vbf7jOiN9xPe0lOdZHUhGHZ82rL5jTCsILwcRVCndrarbwmu7G154MpYiKmTXZkqV7Alo4QZzicdyMbWvwvmR2/m//YVTM8qeZWgDSHjDmtehgLWM45zARbPujeqU0T92Gmgs89l2htrSKIVfEFzbtyzdes2f7rMR3DsT9s7hrTTo9fvI0eb7EXkrl28iVHWejeTfeu67KQzKLYpdImdyxYIjA1uSy2hfTFv/d3cnXH4nh+maaicAPllDg7JjsxZAfQoVAycJHizlQ5d34k8SzMID0x3kxnXwHfxXvz6DS3RnKydYTBUIWPYKJAEFefnSer1pU55Mw3PEJuMbPGO6Per4Y9UBohIIx5FdrGRChHnhPuJeIKACPXiVuli9ItRLEkdb1mLxNHAk3uJy88YX/Rf/sKUjR12zxRTDxxJNDJS+Dlsbqu3n4I65ujli/3rQ8Zk1MjmTOsz9+kTqOM4upsnQ6IWq/zeZTItMCgHpQhuhr4ip73honuzoJgge1cqWBFYvpabAPTOERTOP1kmx5SXPARX5uxyJzAiNILBC8zh7fGfNXOWV37O9gPNcivn6S9fB2Uhzqxb280Sz1OqOlLYK4Zd6grclXRmzd7jwWSX9V/ksh8wlbKD1hqmFU2Ekb/vTs/YZwJiVxHg==\", \"BAIDUID\": \"06AC0A86BB6AC5BBF1585A466EB90B8E:FG=1\", \"CPID_212\": \"60952149\", \"CPTK_212\": \"429062671\", \"HMACCOUNT\": \"9A887F4D727A151D\", \"SIGNIN_UC\": \"70a2711cf1d3d9b1a82d2f87d633bd8a04941064422EeVrf3ucKR%2FQM4O5BAq7epZlKfVbHyHx9P4gYkQjd5ffyp2W6UmenWK6OoiLl9uvQuxXaHbgXcSvafSCp9mkb8IhmpnyT3xsr%2BkhD46Ioe7sf1PApsjnmMyMVs0%2FtGZA3YkU%2BFqOhHpWAbP7tF25vHOXjYBymY5ffswmOuMddX3zmxXDR%2Fx9gfIkC%2FrhqUMqIEUKRT5%2B5jRzED2%2Boaho6IuSAc7KDR1ngz30qJajANRIgTl25a5x0IOdEDyNUn3N5r6CDENRM7nyuM6ULAH4yyJPAEQMpHXvGCjSdvk1TfI%3D43263203639697630192796561499060\", \"bdindexid\": \"bjfs6h3lskrhoecsgqoe151cb2\", \"BDUSS_BFESS\": \"lktZ29hNVoxcUwtNVk3U3FFMnRsQVhMTGJDMjZnQndsUEVRUFZiNjQxd3BVQnhvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACnD9Gcpw~RnQ\", \"__cas__rn__\": \"494106442\", \"BAIDUID_BFESS\": \"06AC0A86BB6AC5BBF1585A466EB90B8E:FG=1\", \"__cas__id__212\": \"60952149\", \"__cas__st__212\": \"4520bd44cc8ed2a5d376b6241541eeadc0582e70a81f2f58aed9b391dbf99335ed34ad25cb17f01ca8786c68\", \"Hm_lvt_d101ea4d2a5c67dab98251f0b5de24dc\": \"1744093976\", \"Hm_lpvt_d101ea4d2a5c67dab98251f0b5de24dc\": \"1744093996\"}', '2025-04-08 06:33:19'),
 (2, '18781162981', '{\"RT\": \"\\\"z=1&dm=baidu.com&si=71fca3b2-b66d-40bb-b9df-d49c9f6c9ad9&ss=m8iq35ql&sl=2&tt=4oj&bcn=https%3A%2F%2Ffclog.baidu.com%2Flog%2Fweirwood%3Ftype%3Dperf&ld=goq\\\"\", \"BDUSS\": \"pHTjJJV3RhTWVpNy1vR0dBUXJHZEp2NDZwaWtxR0FSMjlxSGoweFNPV1E0QVJvSVFBQUFBJCQAAAAAAQAAAAEAAAB5rwGWSm9zZW5DeQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJBT3WeQU91ncH\", \"ab_sr\": \"1.0.1_Yzc4NjFkOTQ4MTY5NTAzYTM5YmUzNDRlMTJkMTM4NTEzNmMzY2UwOWY1YWZkNmI5ZDM5ZDhkMjUxMjgyZmQ3OTUzZjIzYmJiZWUzMWFhMTBhMzUyY2UyZGYwYTc0NmJkZDM2MjllYzU3NmMxZWVjYmFkYzJlODQ3MDkxNTFiZjBmZmQ1NWFlYWUyNzJkMThjY2FmOWY1ZWE0ZGFiZDkxYw==\", \"ppfuid\": \"FOCoIC3q5fKa8fgJnwzbE67EJ49BGJeplOzf+4l4EOvDuu2RXBRv6R3A1AZMa49I27C0gDDLrJyxcIIeAeEhD8JYsoLTpBiaCXhLqvzbzmvy3SeAW17tKgNq/Xx+RgOdb8TWCFe62MVrDTY6lMf2GrfqL8c87KLF2qFER3obJGmxOaJD7Qr04D9rET96PX99GEimjy3MrXEpSuItnI4KD2P5vWa8VVdqKPLBckQ0WyrgwNSQKKIDdXA6eDfuiw2FJ3ZBF1sLBqLP1Lik2nWCKk4sXpnMWzrlcw817brPPlfGgLbz7OSojK1zRbqBESR5Pdk2R9IA3lxxOVzA+Iw1TWLSgWjlFVG9Xmh1+20oPSbrzvDjYtVPmZ+9/6evcXmhcO1Y58MgLozKnaQIaLfWRHYJbniad6MOTaDR3XV1dTLxUSUZS0ReZYJMPG6nCsxNJlhI2UyeJA6QroZFMelR7tnTNS/pLMWceus0e757/UMPmrThfasmhDJrMFcBfoSrAAv3LCf1Y7/fHL3PTSf9vid/u2VLX4h1nBtx8EF07eCMhWVv+2qjbPV7ZhXk3reaWRFEeso3s/Kc9n/UXtUfNU1sHiCdbrCW5yYsuSM9SPGDZsl7FhTAKw7qIu38vFZiq+DRc8Vbf7jOiN9xPe0lOdZHUhGHZ82rL5jTCsILwcRVCndrarbwmu7G154MpYiKmTXZkqV7Alo4QZzicdyMbWvwvmR2/m//YVTM8qeZWgDSHjDmtehgLWM45zARbPujeqU0T92Gmgs89l2htrSKIVfEFzbtyzdes2f7rMR3DsT9s7hrTTo9fvI0eb7EXkrl28iVHWejeTfeu67KQzKLYpdImdyxYIjA1uSy2hfTFv/d3cnXH4nh+maaicAPllDg7JjsxZAfQoVAycJHizlQ5d34k8SzMID0x3kxnXwHfxXvz6DS3RnKydYTBUIWPYKJAEFefnSer1pU55Mw3PEJuMbPGO6Per4Y9UBohIIx5FdrGRChHnhPuJeIKACPXiVuli9ItRLEkdb1mLxNHAk3uJy88YX/Rf/sKUjR12zxRTDxxJNDJS+Dlsbqu3n4I65ujli/3rQ8Zk1MjmTOsz9+kTqOM4upsnQ6IWq/zeZTItMCgHpQhuhr4ip73honuzoJgge1cqWBFYvpabAPTOERTOP1kmx5SXPARX5uxyJzAiNILBC8zh7fGfNXOWV37O9gPNcivn6S9fB2Uhzqxb280Sz1OqOlLYK4Zd6grclXRmzd7jwWSX9V/ksh8wlbKD1hqmFU2Ekb/vTs/YZwJiVxHg==\", \"BAIDUID\": \"2A22611B8CFDAD87CAEFEF58E88BB9D4:FG=1\", \"CPID_212\": \"65828275\", \"CPTK_212\": \"1804289749\", \"HMACCOUNT\": \"974CCE1745E6D0B0\", \"SIGNIN_UC\": \"70a2711cf1d3d9b1a82d2f87d633bd8a04925705466xgmDyJP4kFoj02UQhjnnF0daGoWVq%2Fb6PQJwjiZbfhPIyGSneWCsPitfBRxvmBeJYx27YhT71FLie2DZnLWr%2BKxizdDEAzGcYIL7vMiDOa%2FKvYuB0yOH65tLbNl1aGx1AoH9H5v1kgYpvzNP8skaEE6ofBJaG%2B0A5wADj2%2B5Ov7sccDI9XNxTmewX1qiti%2B8S%2FHD0ARA1gxgFD6QcnQPJgZaZbkcjf2e2JCGCxBteYZfvIweCmKHPCwJ%2FwAQrSwMJhOXZrm39gkN6eRBTSfbOA%3D%3D77116481728614703881703584852345\", \"bdindexid\": \"3cjsf1fst2u74euquj61jiblc0\", \"BDUSS_BFESS\": \"pHTjJJV3RhTWVpNy1vR0dBUXJHZEp2NDZwaWtxR0FSMjlxSGoweFNPV1E0QVJvSVFBQUFBJCQAAAAAAQAAAAEAAAB5rwGWSm9zZW5DeQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJBT3WeQU91ncH\", \"__cas__rn__\": \"492570546\", \"BAIDUID_BFESS\": \"2A22611B8CFDAD87CAEFEF58E88BB9D4:FG=1\", \"__cas__id__212\": \"65828275\", \"__cas__st__212\": \"c79e86251dceddca16e4db6d89302cc438ecea1e19c1f7135907c5077cd34233bb95e14cf3d4952b19c50d14\", \"Hm_lvt_d101ea4d2a5c67dab98251f0b5de24dc\": \"1742558078\", \"Hm_lpvt_d101ea4d2a5c67dab98251f0b5de24dc\": \"1742558098\"}', '2025-03-21 11:55:00'),
-(3, 'test', '{\"RT\": \"\\\"z=1&dm=baidu.com&si=acee20c1-27e3-44da-b715-9e09ccd2cddc&ss=m9qgyyzp&sl=4&tt=582&bcn=https%3A%2F%2Ffclog.baidu.com%2Flog%2Fweirwood%3Ftype%3Dperf&ld=kww\\\"\", \"XFI\": \"1c524910-1e5a-11f0-9e25-1f6de957b71b\", \"XFT\": \"F6nIVSKCSjbXWHnDv1D1G5JD618El+fevkSX4tfxR5Q=\", \"XFCS\": \"EE83FD789FE782120A785F7094F105902D72703558F71E175044074083601F5D\", \"BDUSS\": \"1HTWc5dn5jenZMVHNCREhkS3Axfn5saUJ4VWRwVHlqM08yOEppSE5laGtQUzFvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGSwBWhksAVoVU\", \"ab_sr\": \"1.0.1_ZTQxNjU2NjIzY2UxOTQ2OGZlYmUwM2UwYzNlNDM2Y2QzYTU5YjdmOWIxZDJiOTRkMjYzMTIzOGM0MWQ4NWRmNTdhMzI0NjJjNjI5ZDA1NThiNjdjYTU1ZWM0NzdmNDViMDE5NmIwYmY3N2IxZmEwZjg3NWRhM2Y1NDJjOGYwYjEwYjhmMmJkYjY4NzZiN2E4YzIwZTE5ODU1NjQ4NzJhNw==\", \"ppfuid\": \"FOCoIC3q5fKa8fgJnwzbE67EJ49BGJeplOzf+4l4EOvDuu2RXBRv6R3A1AZMa49I27C0gDDLrJyxcIIeAeEhD8JYsoLTpBiaCXhLqvzbzmvy3SeAW17tKgNq/Xx+RgOdb8TWCFe62MVrDTY6lMf2GrfqL8c87KLF2qFER3obJGmxOaJD7Qr04D9rET96PX99GEimjy3MrXEpSuItnI4KD2P5vWa8VVdqKPLBckQ0Wyrci+eNtO+sUfx41sINYk+w1Rc/idC7NbMP5tI+OCibu4QEDrX7W9h8cppUHyBtTX3GgLbz7OSojK1zRbqBESR5Pdk2R9IA3lxxOVzA+Iw1TWLSgWjlFVG9Xmh1+20oPSbrzvDjYtVPmZ+9/6evcXmhcO1Y58MgLozKnaQIaLfWRHYJbniad6MOTaDR3XV1dTLxUSUZS0ReZYJMPG6nCsxNJlhI2UyeJA6QroZFMelR7tnTNS/pLMWceus0e757/UPzWCk2doxxowOinC9vxVcqAAv3LCf1Y7/fHL3PTSf9vid/u2VLX4h1nBtx8EF07eCMhWVv+2qjbPV7ZhXk3reaWRFEeso3s/Kc9n/UXtUfNU1sHiCdbrCW5yYsuSM9SPGDZsl7FhTAKw7qIu38vFZiq+DRc8Vbf7jOiN9xPe0lOdZHUhGHZ82rL5jTCsILwcRVCndrarbwmu7G154MpYiKmTXZkqV7Alo4QZzicdyMbWvwvmR2/m//YVTM8qeZWgDSHjDmtehgLWM45zARbPujeqU0T92Gmgs89l2htrSKIcpPX9uJt95pVShWvlWoxLISiPJAl5f8YjYL/FdCmcLTae8Ul2BRT6S+MmtwuZGX5pdImdyxYIjA1uSy2hfTFv/d3cnXH4nh+maaicAPllDgrppZTr0lDf2Vsiy73L8egP9ck5gsaaSE4obz9V1JGvyp8lNw+IyCN2Gou0efGgcY+cwmJir9ukThjX3rfeTtf8pka5Gmp2HPTDByexF73IJrGRChHnhPuJeIKACPXiVuli9ItRLEkdb1mLxNHAk3uJy88YX/Rf/sKUjR12zxRTDxxJNDJS+Dlsbqu3n4I65ujli/3rQ8Zk1MjmTOsz9+kTqOM4upsnQ6IWq/zeZTItMCgHpQhuhr4ip73honuzoJhfJJqPUSX01viD97GXfw7kf+R6as3JPAEXsdOdDsWEAgJn+ZMVrELI7pXz8Jko9Xv3uSDHo/C3kmFLrauvEYpUg3FbqEqM6JmRHqkwRhSJQtmfffhEiJHXdZXgTikpxSzRszeYvFyXCPSuJ5oyoOgoCPKXE8fX73WOZ0mAlF1mc=\", \"BAIDUID\": \"7D900A94DFAD9EB154C5582279809AA8:FG=1\", \"CPID_212\": \"60952149\", \"CPTK_212\": \"226162791\", \"HMACCOUNT\": \"8F96895D73936F7A\", \"SIGNIN_UC\": \"70a2711cf1d3d9b1a82d2f87d633bd8a04952157499pfPnuFeyG6gOeeGymYX%2FLTGlrOsml%2FrR%2F9EDEQZKVvUbkqvJmDR98MYiBmpArcPRbkb7u2cEP43HYJ3uQRhpMRO3%2BNZMCMgXNfgXAY5XaG%2FOcC%2Bqa8Z3TWxxny4aECgb5QkMhoArrqO2AeHGH0SJ5voOF37u9hN1ncEYNba%2Ft4oowRGDb5WmJPW5VHMuB1a65mudLwHCyzBmWzjr6FoTlBc9r07TIMzKIjsupfGXlsKaY7j65cGtJ50NLVKDUZcne75Wk4Z%2FNGBVXqlzvvt%2F632PaPgCnDaFjkTCJsqws1Q%3D89738713518781032994974015017902\", \"bdindexid\": \"9u9osvvv52g4451b7ntas1jle3\", \"BDUSS_BFESS\": \"1HTWc5dn5jenZMVHNCREhkS3Axfn5saUJ4VWRwVHlqM08yOEppSE5laGtQUzFvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGSwBWhksAVoVU\", \"__cas__rn__\": \"495215749\", \"BAIDUID_BFESS\": \"7D900A94DFAD9EB154C5582279809AA8:FG=1\", \"__cas__id__212\": \"60952149\", \"__cas__st__212\": \"122d535c9366084683b29926d03267f9a44f17794813546801e155ae1c33417279121ba64133fe96cdfea80d\", \"Hm_lvt_d101ea4d2a5c67dab98251f0b5de24dc\": \"1745203279\", \"Hm_lpvt_d101ea4d2a5c67dab98251f0b5de24dc\": \"1745203303\"}', '2025-04-21 02:41:53');
+(3, 'test', '{\"RT\": \"\\\"z=1&dm=baidu.com&si=00be8a3e-a6dc-4bc4-ac56-8a578caec39e&ss=m984iqca&sl=7&tt=5m6&bcn=https%3A%2F%2Ffclog.baidu.com%2Flog%2Fweirwood%3Ftype%3Dperf&ld=it1\\\"\", \"XFI\": \"51950390-1443-11f0-991d-a9b7031a1cd4\", \"XFT\": \"NiZHuvXR51PfummuKkD2gaKCbT0fLJpra19Vo2wID5c=\", \"XFCS\": \"16501F1384BC43C9D24883E7011B6F0D08A97B7DBC6975EB8D44F0AF95F63F65\", \"BDUSS\": \"lktZ29hNVoxcUwtNVk3U3FFMnRsQVhMTGJDMjZnQndsUEVRUFZiNjQxd3BVQnhvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACnD9Gcpw~RnQ\", \"ab_sr\": \"1.0.1_ZjY5MzI0ODgxY2IzMjIyNzhmMjhhZTRhZTBjZjk2ZDdhN2EwZDlhMzY0ZTcyNTQwZjQxN2YzY2RiOGU5OTRjY2JkYTcyNzM0ZGM2Mjk0MzMxNjhkODIwNWNiZjdmMjVhZWY4Mjc0YzAyMDg3MGNhMGJmNjU0NmU3MDYyZDhhZmZhNDZmYmJlN2Q0ODRkYWE5ZTRmNGRlODU5ZDQxZGY2ZQ==\", \"ppfuid\": \"FOCoIC3q5fKa8fgJnwzbE67EJ49BGJeplOzf+4l4EOvDuu2RXBRv6R3A1AZMa49I27C0gDDLrJyxcIIeAeEhD8JYsoLTpBiaCXhLqvzbzmvy3SeAW17tKgNq/Xx+RgOdb8TWCFe62MVrDTY6lMf2GrfqL8c87KLF2qFER3obJGmxOaJD7Qr04D9rET96PX99GEimjy3MrXEpSuItnI4KD2P5vWa8VVdqKPLBckQ0WyrgwNSQKKIDdXA6eDfuiw2FJ3ZBF1sLBqLP1Lik2nWCKk4sXpnMWzrlcw817brPPlfGgLbz7OSojK1zRbqBESR5Pdk2R9IA3lxxOVzA+Iw1TWLSgWjlFVG9Xmh1+20oPSbrzvDjYtVPmZ+9/6evcXmhcO1Y58MgLozKnaQIaLfWRHYJbniad6MOTaDR3XV1dTLxUSUZS0ReZYJMPG6nCsxNJlhI2UyeJA6QroZFMelR7tnTNS/pLMWceus0e757/UMPmrThfasmhDJrMFcBfoSrAAv3LCf1Y7/fHL3PTSf9vid/u2VLX4h1nBtx8EF07eCMhWVv+2qjbPV7ZhXk3reaWRFEeso3s/Kc9n/UXtUfNU1sHiCdbrCW5yYsuSM9SPGDZsl7FhTAKw7qIu38vFZiq+DRc8Vbf7jOiN9xPe0lOdZHUhGHZ82rL5jTCsILwcRVCndrarbwmu7G154MpYiKmTXZkqV7Alo4QZzicdyMbWvwvmR2/m//YVTM8qeZWgDSHjDmtehgLWM45zARbPujeqU0T92Gmgs89l2htrSKIVfEFzbtyzdes2f7rMR3DsT9s7hrTTo9fvI0eb7EXkrl28iVHWejeTfeu67KQzKLYpdImdyxYIjA1uSy2hfTFv/d3cnXH4nh+maaicAPllDg7JjsxZAfQoVAycJHizlQ5d34k8SzMID0x3kxnXwHfxXvz6DS3RnKydYTBUIWPYKJAEFefnSer1pU55Mw3PEJuMbPGO6Per4Y9UBohIIx5FdrGRChHnhPuJeIKACPXiVuli9ItRLEkdb1mLxNHAk3uJy88YX/Rf/sKUjR12zxRTDxxJNDJS+Dlsbqu3n4I65ujli/3rQ8Zk1MjmTOsz9+kTqOM4upsnQ6IWq/zeZTItMCgHpQhuhr4ip73honuzoJgge1cqWBFYvpabAPTOERTOP1kmx5SXPARX5uxyJzAiNILBC8zh7fGfNXOWV37O9gPNcivn6S9fB2Uhzqxb280Sz1OqOlLYK4Zd6grclXRmzd7jwWSX9V/ksh8wlbKD1hqmFU2Ekb/vTs/YZwJiVxHg==\", \"BAIDUID\": \"06AC0A86BB6AC5BBF1585A466EB90B8E:FG=1\", \"CPID_212\": \"60952149\", \"CPTK_212\": \"429062671\", \"HMACCOUNT\": \"9A887F4D727A151D\", \"SIGNIN_UC\": \"70a2711cf1d3d9b1a82d2f87d633bd8a04941064422EeVrf3ucKR%2FQM4O5BAq7epZlKfVbHyHx9P4gYkQjd5ffyp2W6UmenWK6OoiLl9uvQuxXaHbgXcSvafSCp9mkb8IhmpnyT3xsr%2BkhD46Ioe7sf1PApsjnmMyMVs0%2FtGZA3YkU%2BFqOhHpWAbP7tF25vHOXjYBymY5ffswmOuMddX3zmxXDR%2Fx9gfIkC%2FrhqUMqIEUKRT5%2B5jRzED2%2Boaho6IuSAc7KDR1ngz30qJajANRIgTl25a5x0IOdEDyNUn3N5r6CDENRM7nyuM6ULAH4yyJPAEQMpHXvGCjSdvk1TfI%3D43263203639697630192796561499060\", \"bdindexid\": \"bjfs6h3lskrhoecsgqoe151cb2\", \"BDUSS_BFESS\": \"lktZ29hNVoxcUwtNVk3U3FFMnRsQVhMTGJDMjZnQndsUEVRUFZiNjQxd3BVQnhvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACnD9Gcpw~RnQ\", \"__cas__rn__\": \"494106442\", \"BAIDUID_BFESS\": \"06AC0A86BB6AC5BBF1585A466EB90B8E:FG=1\", \"__cas__id__212\": \"60952149\", \"__cas__st__212\": \"4520bd44cc8ed2a5d376b6241541eeadc0582e70a81f2f58aed9b391dbf99335ed34ad25cb17f01ca8786c68\", \"Hm_lvt_d101ea4d2a5c67dab98251f0b5de24dc\": \"1744093976\", \"Hm_lpvt_d101ea4d2a5c67dab98251f0b5de24dc\": \"1744093996\"}', '2025-04-08 06:33:25');
 
 -- --------------------------------------------------------
 
@@ -496,6 +496,17 @@ CREATE TABLE `crowd_age_data` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+--
+-- 转存表中的数据 `crowd_age_data`
+--
+
+INSERT INTO `crowd_age_data` (`id`, `typeId`, `name`, `tgi`, `rate`, `keyword`, `date`, `created_at`) VALUES
+(1, 1, '0-19', 54.79, 4.49, '养老', '2025-04-26', '2025-04-26 13:13:28'),
+(2, 2, '20-29', 140.94, 26.9, '养老', '2025-04-26', '2025-04-26 13:13:28'),
+(3, 3, '30-39', 112.08, 36.41, '养老', '2025-04-26', '2025-04-26 13:13:28'),
+(4, 4, '40-49', 86.45, 19.82, '养老', '2025-04-26', '2025-04-26 13:13:28'),
+(5, 5, '50+', 72.01, 12.38, '养老', '2025-04-26', '2025-04-26 13:13:28');
+
 -- --------------------------------------------------------
 
 --
@@ -512,6 +523,14 @@ CREATE TABLE `crowd_gender_data` (
   `date` date NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- 转存表中的数据 `crowd_gender_data`
+--
+
+INSERT INTO `crowd_gender_data` (`id`, `typeId`, `name`, `tgi`, `rate`, `keyword`, `date`, `created_at`) VALUES
+(1, 0, '女', 97.96, 46.84, '养老', '2025-04-26', '2025-04-26 13:13:28'),
+(2, 1, '男', 101.87, 53.16, '养老', '2025-04-26', '2025-04-26 13:13:28');
 
 -- --------------------------------------------------------
 
@@ -531,6 +550,98 @@ CREATE TABLE `crowd_interest_data` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+--
+-- 转存表中的数据 `crowd_interest_data`
+--
+
+INSERT INTO `crowd_interest_data` (`id`, `name`, `value`, `tgi`, `rate`, `category`, `keyword`, `data_date`, `created_at`) VALUES
+(1, '保险', 56, 193, 0, '金融财经', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(2, '银行', 51, 171, 0, '金融财经', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(3, '股票', 39, 183, 0, '金融财经', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(4, '贷款', 27, 166, 0, '金融财经', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(5, '基金', 17, 441, 0, '金融财经', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(6, '贵金属', 16, 149, 0, '金融财经', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(7, '外汇', 14, 158, 0, '金融财经', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(8, '银行业务', 14, 181, 0, '金融财经', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(9, '债券', 13, 274, 0, '金融财经', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(10, '期货', 7, 224, 0, '金融财经', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(11, '全日制学校', 75, 128, 0, '教育培训', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(12, '基础教育科目', 64, 119, 0, '教育培训', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(13, '考试培训', 48, 154, 0, '教育培训', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(14, '语言学习', 36, 114, 0, '教育培训', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(15, '高等教育专业', 21, 130, 0, '教育培训', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(16, '艺术培训', 17, 79, 0, '教育培训', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(17, '技能培训', 17, 127, 0, '教育培训', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(18, 'K12课程培训', 9, 68, 0, '教育培训', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(19, '留学', 5, 125, 0, '教育培训', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(20, '体育培训', 1, 137, 0, '教育培训', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(21, '电影', 73, 105, 0, '影视音乐', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(22, '音乐', 66, 110, 0, '影视音乐', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(23, '电视剧', 60, 100, 0, '影视音乐', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(24, '动漫', 49, 94, 0, '影视音乐', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(25, '综艺', 43, 102, 0, '影视音乐', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(26, '影音APP', 38, 107, 0, '影视音乐', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(27, '直播', 34, 124, 0, '影视音乐', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(28, '戏曲曲艺', 19, 75, 0, '影视音乐', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(29, '广播电台', 1, 132, 0, '影视音乐', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(30, '纪录片', 0, 97, 0, '影视音乐', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(31, '疾病', 84, 112, 0, '医疗健康', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(32, '养生保健', 64, 113, 0, '医疗健康', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(33, '药品', 62, 116, 0, '医疗健康', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(34, '就医偏好', 60, 124, 0, '医疗健康', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(35, '医疗机构', 54, 153, 0, '医疗健康', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(36, '医疗服务', 40, 131, 0, '医疗健康', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(37, '整容整形', 23, 98, 0, '医疗健康', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(38, '医疗器械', 8, 167, 0, '医疗健康', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(39, '网络小说', 61, 115, 0, '书籍阅读', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(40, '文学', 43, 109, 0, '书籍阅读', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(41, '人文社科', 34, 243, 0, '书籍阅读', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(42, '经济管理', 19, 417, 0, '书籍阅读', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(43, '科技', 14, 235, 0, '书籍阅读', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(44, '关注书籍', 11, 98, 0, '书籍阅读', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(45, '报刊杂志', 11, 230, 0, '书籍阅读', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(46, '少儿', 8, 80, 0, '书籍阅读', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(47, '励志成功', 6, 179, 0, '书籍阅读', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(48, '艺术与摄影', 3, 83, 0, '书籍阅读', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(49, '菜品', 68, 117, 0, '餐饮美食', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(50, '水果蔬菜', 59, 111, 0, '餐饮美食', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(51, '口味', 52, 108, 0, '餐饮美食', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(52, '烹饪和菜谱', 51, 102, 0, '餐饮美食', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(53, '休闲小食', 46, 113, 0, '餐饮美食', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(54, '酒水', 26, 97, 0, '餐饮美食', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(55, '品牌偏好', 25, 135, 0, '餐饮美食', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(56, '喝茶', 18, 110, 0, '餐饮美食', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(57, '菜系', 14, 112, 0, '餐饮美食', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(58, '餐馆档次', 6, 162, 0, '餐饮美食', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(59, '科技资讯', 71, 129, 0, '资讯', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(60, '社会时政', 62, 160, 0, '资讯', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(61, '网络奇闻', 20, 73, 0, '资讯', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(62, '社交通讯', 36, 205, 0, '软件应用', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(63, '系统工具', 29, 176, 0, '软件应用', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(64, '生活实用', 9, 140, 0, '软件应用', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(65, '手机美化', 6, 269, 0, '软件应用', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(66, '办公学习', 2, 97, 0, '软件应用', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(67, '国内游', 71, 127, 0, '旅游出行', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(68, '关注景点', 61, 130, 0, '旅游出行', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(69, '景点类型', 56, 134, 0, '旅游出行', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(70, '远途出行方式', 56, 133, 0, '旅游出行', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(71, '酒店', 36, 135, 0, '旅游出行', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(72, '出国游', 19, 140, 0, '旅游出行', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(73, '交通票务', 16, 166, 0, '旅游出行', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(74, '旅游网站偏好', 16, 167, 0, '旅游出行', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(75, '旅游主题', 8, 124, 0, '旅游出行', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(76, '本地周边游', 7, 181, 0, '旅游出行', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(77, '手机', 60, 127, 0, '家电数码', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(78, '电脑', 40, 161, 0, '家电数码', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(79, '大家电', 28, 109, 0, '家电数码', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(80, '家电关注品牌', 17, 126, 0, '家电数码', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(81, '办公数码设备', 11, 157, 0, '家电数码', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(82, '摄影器材', 8, 133, 0, '家电数码', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(83, '影音设备', 8, 101, 0, '家电数码', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(84, '厨房电器', 5, 77, 0, '家电数码', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(85, '网络设备', 5, 126, 0, '家电数码', '养老', '2025-04-26', '2025-04-26 13:13:30'),
+(86, '智能设备', 4, 161, 0, '家电数码', '养老', '2025-04-26', '2025-04-26 13:13:30');
+
 -- --------------------------------------------------------
 
 --
@@ -545,6 +656,43 @@ CREATE TABLE `crowd_region_data` (
   `date` date NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- 转存表中的数据 `crowd_region_data`
+--
+
+INSERT INTO `crowd_region_data` (`id`, `province`, `value`, `keyword`, `date`, `created_at`) VALUES
+(1, '山东', 630, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(2, '安徽', 182, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(3, '江西', 223, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(4, '重庆', 187, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(5, '内蒙古', 156, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(6, '海南', 427, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(7, '贵州', 244, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(8, '宁夏', 5, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(9, '福建', 276, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(10, '上海', 369, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(11, '北京', 942, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(12, '广西', 244, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(13, '广东', 807, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(14, '四川', 468, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(15, '山西', 151, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(16, '江苏', 661, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(17, '浙江', 453, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(18, '青海', 5, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(19, '黑龙江', 46, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(20, '河北', 453, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(21, '吉林', 166, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(22, '辽宁', 140, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(23, '天津', 78, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(24, '陕西', 1000, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(25, '河南', 161, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(26, '新疆', 114, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(27, '湖南', 541, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(28, '湖北', 234, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(29, '云南', 213, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(30, '西藏', 0, '养老', '2025-04-25', '2025-04-26 13:13:26'),
+(31, '甘肃', 0, '养老', '2025-04-25', '2025-04-26 13:13:26');
 
 -- --------------------------------------------------------
 
@@ -566,42 +714,28 @@ CREATE TABLE `human_request_data` (
 -- --------------------------------------------------------
 
 --
--- 表的结构 `trend_predictions`
---
-
-CREATE TABLE `trend_predictions` (
-  `id` int(11) NOT NULL,
-  `keyword` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
-  `prediction_date` date NOT NULL,
-  `predicted_index` int(11) NOT NULL,
-  `confidence` float NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- 表的结构 `users`
 --
 
 CREATE TABLE `users` (
   `id` int(11) NOT NULL,
-  `username` varchar(50) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `phone` varchar(20) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `last_login` datetime DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `username` varchar(50) COLLATE utf8_unicode_ci NOT NULL,
+  `password` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `phone` varchar(20) COLLATE utf8_unicode_ci NOT NULL,
+  `email` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
+  `role` varchar(20) COLLATE utf8_unicode_ci NOT NULL DEFAULT 'user',
+  `last_login` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
 -- 转存表中的数据 `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `password`, `phone`, `email`, `last_login`, `created_at`, `updated_at`) VALUES
-(1, 'admin', 'Wen123321', '18584855132', '1402353365@qq.com', '2025-03-21 14:43:02', '2025-03-03 11:14:55', '2025-03-21 06:43:02'),
-(2, 'test', 'Wen123321..', '18584855333', '222@qq.com', '2025-04-23 10:03:37', '2025-03-21 15:26:52', '2025-04-23 02:03:37');
+INSERT INTO `users` (`id`, `username`, `password`, `phone`, `email`, `role`, `last_login`, `created_at`) VALUES
+(1, 'admin', 'admin123', '13800138000', 'admin@example.com', 'admin', '2025-04-26 13:11:58', '2025-04-26 12:06:23'),
+(2, 'test', 'Wen123321', '18584855132', '1402353365@qq.com', 'user', '2025-04-26 12:26:48', '2025-04-26 12:07:29'),
+(3, 'test1', '123456', '18584855431', 'aa@qq.com', 'user', '2025-04-26 13:11:13', '2025-04-26 12:32:23');
 
 --
 -- 转储表的索引
@@ -663,13 +797,6 @@ ALTER TABLE `human_request_data`
   ADD PRIMARY KEY (`id`);
 
 --
--- 表的索引 `trend_predictions`
---
-ALTER TABLE `trend_predictions`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_keyword` (`keyword`);
-
---
 -- 表的索引 `users`
 --
 ALTER TABLE `users`
@@ -704,25 +831,25 @@ ALTER TABLE `cookies`
 -- 使用表AUTO_INCREMENT `crowd_age_data`
 --
 ALTER TABLE `crowd_age_data`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- 使用表AUTO_INCREMENT `crowd_gender_data`
 --
 ALTER TABLE `crowd_gender_data`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- 使用表AUTO_INCREMENT `crowd_interest_data`
 --
 ALTER TABLE `crowd_interest_data`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=87;
 
 --
 -- 使用表AUTO_INCREMENT `crowd_region_data`
 --
 ALTER TABLE `crowd_region_data`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
 -- 使用表AUTO_INCREMENT `human_request_data`
@@ -731,16 +858,10 @@ ALTER TABLE `human_request_data`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- 使用表AUTO_INCREMENT `trend_predictions`
---
-ALTER TABLE `trend_predictions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- 使用表AUTO_INCREMENT `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
