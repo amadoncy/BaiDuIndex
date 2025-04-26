@@ -1,8 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-from pyecharts.render import make_snapshot
 from tempfile import NamedTemporaryFile
-import os
 
 class ChartWidget(QWidget):
     def __init__(self, parent=None):
