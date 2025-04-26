@@ -30,6 +30,7 @@ from utils.db_utils import DatabaseConnection
 import threading
 from utils.get_huamn_requestion_utils import get_human_request_data
 from utils.get_index_cookie_utils import get_index_cookie, get_login_user_info
+from gui.user_management_window import UserManagementWindow
 
 
 class DataCollectionThread(QThread):
@@ -448,10 +449,12 @@ class WelcomeWindow(QMainWindow):
                 {"title": "数据报告", "description": "生成综合分析报告"},
                 {"title": "系统设置", "description": "调整系统配置"}
             ]
-
+            if self.is_admin():
+                functions.append({"title": "用户管理", "description": "管理系统用户"})
+            self.function_list.clear()
             for function in functions:
                 item = QListWidgetItem(f"{function['title']}\n{function['description']}")
-                item.setData(Qt.UserRole, function['title'])  # 存储功能名称
+                item.setData(Qt.UserRole, function['title'])
                 self.function_list.addItem(item)
 
             left_layout.addWidget(self.function_list)
@@ -496,6 +499,7 @@ class WelcomeWindow(QMainWindow):
 
             # 连接功能列表的选择信号
             self.function_list.currentRowChanged.connect(self.content_stack.setCurrentIndex)
+            self.function_list.currentRowChanged.connect(self.switch_page)
 
             right_layout.addWidget(self.content_stack)
 
@@ -515,6 +519,13 @@ class WelcomeWindow(QMainWindow):
             logging.error(f"初始化界面时发生错误: {str(e)}")
             QMessageBox.critical(self, "错误", f"初始化界面时发生错误：{str(e)}")
             self.close()
+
+    def is_admin(self):
+        db = DatabaseConnection()
+        cursor = db.connection.cursor()
+        cursor.execute("SELECT role FROM users WHERE username = %s", (self.username,))
+        result = cursor.fetchone()
+        return result and result[0] == "admin"
 
     def handle_logout(self):
         """处理退出登录"""
@@ -1253,25 +1264,6 @@ class WelcomeWindow(QMainWindow):
         settings_layout = QVBoxLayout(settings_container)
         settings_layout.setSpacing(20)
 
-        # 添加清空数据按钮
-        clear_data_btn = QPushButton("清空数据表")
-        clear_data_btn.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(244, 67, 54, 0.8);
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 10px;
-                font-size: 14px;
-                min-width: 150px;
-            }
-            QPushButton:hover {
-                background-color: rgba(244, 67, 54, 1);
-            }
-        """)
-        clear_data_btn.clicked.connect(self.clear_data_tables)
-        settings_layout.addWidget(clear_data_btn)
-
         # 添加天气更新间隔设置
         weather_group = QGroupBox("天气更新设置")
         weather_layout = QVBoxLayout(weather_group)
@@ -1283,18 +1275,8 @@ class WelcomeWindow(QMainWindow):
         weather_interval_spin = QSpinBox()
         weather_interval_spin.setRange(1, 60)
         weather_interval_spin.setValue(30)
-        weather_interval_spin.setStyleSheet("""
-            QSpinBox {
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                border-radius: 5px;
-                padding: 5px;
-            }
-        """)
-        weather_interval_spin.valueChanged.connect(self.update_weather_interval)
         weather_layout.addWidget(weather_interval_spin)
-
+        weather_group.setLayout(weather_layout)
         settings_layout.addWidget(weather_group)
 
         # 添加字体大小设置
@@ -1308,18 +1290,8 @@ class WelcomeWindow(QMainWindow):
         font_size_spin = QSpinBox()
         font_size_spin.setRange(8, 20)
         font_size_spin.setValue(12)
-        font_size_spin.setStyleSheet("""
-            QSpinBox {
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                border-radius: 5px;
-                padding: 5px;
-            }
-        """)
-        font_size_spin.valueChanged.connect(self.update_font_size)
         font_layout.addWidget(font_size_spin)
-
+        font_group.setLayout(font_layout)
         settings_layout.addWidget(font_group)
 
         # 添加主题设置
@@ -1351,7 +1323,6 @@ class WelcomeWindow(QMainWindow):
         """)
         theme_combo.currentTextChanged.connect(self.update_theme)
         theme_layout.addWidget(theme_combo)
-
         settings_layout.addWidget(theme_group)
 
         # 添加数据缓存设置
@@ -5664,3 +5635,14 @@ class WelcomeWindow(QMainWindow):
         layout.addStretch()
         page.setLayout(layout)
         return page
+
+    def switch_page(self, index):
+        item = self.function_list.item(index)
+        if not item:
+            return
+        item_text = item.data(Qt.UserRole) or item.text().split('\n')[0]
+        if item_text == "用户管理":
+            self.user_management_window = UserManagementWindow(self)
+            self.user_management_window.show()
+            return
+        # 其他功能切换逻辑...
