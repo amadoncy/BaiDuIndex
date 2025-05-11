@@ -1265,25 +1265,6 @@ class WelcomeWindow(QMainWindow):
         settings_layout = QVBoxLayout(settings_container)
         settings_layout.setSpacing(20)
 
-        # 添加清空数据按钮
-        clear_data_btn = QPushButton("清空数据表")
-        clear_data_btn.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(244, 67, 54, 0.8);
-                color: white;
-                border: none;
-                border-radius: 5px;
-                padding: 10px;
-                font-size: 14px;
-                min-width: 150px;
-            }
-            QPushButton:hover {
-                background-color: rgba(244, 67, 54, 1);
-            }
-        """)
-        clear_data_btn.clicked.connect(self.clear_data_tables)
-        settings_layout.addWidget(clear_data_btn)
-
         # 添加天气更新间隔设置
         weather_group = QGroupBox("天气更新设置")
         weather_layout = QVBoxLayout(weather_group)
@@ -1712,8 +1693,7 @@ class WelcomeWindow(QMainWindow):
 
             # 获取保存路径
             save_path = self.report_path_label.text().replace("保存路径: ", "")
-
-            # 确保保存目录存在
+            # 确保保存目录存在（os 只在文件顶部 import，不在此 import 或赋值）
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
 
@@ -1791,14 +1771,20 @@ class WelcomeWindow(QMainWindow):
                     if result == 0:  # AcceptRole (第一个按钮)
                         try:
                             import subprocess
+                            import sys
+                            import time
+                            abs_path = os.path.abspath(full_path)
+                            time.sleep(0.2)  # 等待文件写入完成
                             if os.name == 'nt':  # Windows
-                                os.startfile(full_path)
-                            elif os.name == 'posix':  # macOS, Linux
-                                subprocess.call(('xdg-open', full_path))
-                            logging.info(f"已打开文件: {full_path}")
+                                os.startfile(abs_path)
+                            elif sys.platform == 'darwin':  # macOS
+                                subprocess.call(['open', abs_path])
+                            else:  # Linux
+                                subprocess.call(['xdg-open', abs_path])
+                            logging.info(f"已打开文件: {abs_path}")
                         except Exception as open_error:
                             logging.error(f"打开文件失败: {str(open_error)}")
-                            self.show_message("提示", f"无法自动打开文件，请手动打开: {full_path}")
+                            self.show_message("提示", f"无法自动打开文件，请手动打开: {abs_path}")
                 else:
                     self.show_message("警告", f"报告未能保存。\n目标路径: {full_path}\n请检查保存路径的权限或磁盘空间。")
             except Exception as file_error:
@@ -3034,7 +3020,6 @@ class WelcomeWindow(QMainWindow):
         try:
             import json
             import math
-            import os
             print("渲染热力图视图...")
 
             # 确定资源文件路径
