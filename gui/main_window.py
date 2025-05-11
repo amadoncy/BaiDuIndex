@@ -31,6 +31,8 @@ import threading
 from utils.get_huamn_requestion_utils import get_human_request_data
 from utils.get_index_cookie_utils import get_index_cookie, get_login_user_info
 from gui.user_management_window import UserManagementWindow
+from utils.get_crowd_portrait_utils import CODE2PROVINCE
+
 
 
 class DataCollectionThread(QThread):
@@ -498,7 +500,6 @@ class WelcomeWindow(QMainWindow):
             self.content_stack.addWidget(self.create_settings_page())
 
             # 连接功能列表的选择信号
-            self.function_list.currentRowChanged.connect(self.content_stack.setCurrentIndex)
             self.function_list.currentRowChanged.connect(self.switch_page)
 
             right_layout.addWidget(self.content_stack)
@@ -1264,6 +1265,25 @@ class WelcomeWindow(QMainWindow):
         settings_layout = QVBoxLayout(settings_container)
         settings_layout.setSpacing(20)
 
+        # 添加清空数据按钮
+        clear_data_btn = QPushButton("清空数据表")
+        clear_data_btn.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(244, 67, 54, 0.8);
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                font-size: 14px;
+                min-width: 150px;
+            }
+            QPushButton:hover {
+                background-color: rgba(244, 67, 54, 1);
+            }
+        """)
+        clear_data_btn.clicked.connect(self.clear_data_tables)
+        settings_layout.addWidget(clear_data_btn)
+
         # 添加天气更新间隔设置
         weather_group = QGroupBox("天气更新设置")
         weather_layout = QVBoxLayout(weather_group)
@@ -1275,8 +1295,18 @@ class WelcomeWindow(QMainWindow):
         weather_interval_spin = QSpinBox()
         weather_interval_spin.setRange(1, 60)
         weather_interval_spin.setValue(30)
+        weather_interval_spin.setStyleSheet("""
+            QSpinBox {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 5px;
+                padding: 5px;
+            }
+        """)
+        weather_interval_spin.valueChanged.connect(self.update_weather_interval)
         weather_layout.addWidget(weather_interval_spin)
-        weather_group.setLayout(weather_layout)
+
         settings_layout.addWidget(weather_group)
 
         # 添加字体大小设置
@@ -1290,8 +1320,18 @@ class WelcomeWindow(QMainWindow):
         font_size_spin = QSpinBox()
         font_size_spin.setRange(8, 20)
         font_size_spin.setValue(12)
+        font_size_spin.setStyleSheet("""
+            QSpinBox {
+                background-color: rgba(255, 255, 255, 0.1);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 5px;
+                padding: 5px;
+            }
+        """)
+        font_size_spin.valueChanged.connect(self.update_font_size)
         font_layout.addWidget(font_size_spin)
-        font_group.setLayout(font_layout)
+
         settings_layout.addWidget(font_group)
 
         # 添加主题设置
@@ -1323,6 +1363,7 @@ class WelcomeWindow(QMainWindow):
         """)
         theme_combo.currentTextChanged.connect(self.update_theme)
         theme_layout.addWidget(theme_combo)
+
         settings_layout.addWidget(theme_group)
 
         # 添加数据缓存设置
@@ -3482,7 +3523,7 @@ class WelcomeWindow(QMainWindow):
                 SELECT province, value
                 FROM crowd_region_data
                 WHERE keyword = %s AND date = %s
-                AND value IS NOT NULL AND value != 'NULL' AND value > 0
+                AND value IS NOT NULL AND value != 'NULL'
                 ORDER BY value DESC
                 """
                 cursor.execute(region_query, (keyword, region_latest_date))
@@ -4182,28 +4223,31 @@ class WelcomeWindow(QMainWindow):
             # 打印原始数据
             print(f"原始数据: {results}")
 
-            # 准备数据
-            region_data = []
+            # 补全所有省份
+            ALL_PROVINCES = [
+                "北京", "天津", "上海", "重庆", "河北", "山西", "内蒙古", "辽宁", "吉林", "黑龙江", "江苏", "浙江", "安徽", "福建", "江西", "山东",
+                "河南", "湖北", "湖南", "广东", "广西", "海南", "四川", "贵州", "云南", "西藏", "陕西", "甘肃", "青海", "宁夏", "新疆",
+                "台湾", "香港", "澳门"
+            ]
+            province_value_map = {province: 0 for province in ALL_PROVINCES}
             for province, value in results:
+                if province == "未知":
+                    continue
+                if value is None or value == 'NULL' or value == 'NaN' or str(value).lower() == 'nan':
+                    print(f"跳过无效值 - 省份: {province}, 值: {value}")
+                    continue
                 try:
-                    # 尝试直接转换为浮点数
-                    if value is None or value == 'NULL' or value == 'NaN' or str(value).lower() == 'nan':
-                        print(f"跳过无效值 - 省份: {province}, 值: {value}")
-                        continue
-
                     float_value = float(value)
-                    if float_value <= 0:
-                        print(f"跳过零或负值 - 省份: {province}, 值: {float_value}")
+                    if float_value < 0:
+                        print(f"跳过负值 - 省份: {province}, 值: {float_value}")
                         continue
-
-                    # 省份名称处理
-                    province_name = province.replace('省', '').replace('市', '').replace('自治区', '')
-
-                    # 添加数据
-                    region_data.append({"name": province_name, "value": float_value})
-                    print(f"处理数据 - 省份: {province_name}, 值: {float_value}")
+                    if province in province_value_map:
+                        province_value_map[province] = float_value
+                        print(f"处理数据 - 省份: {province}, 值: {float_value}")
                 except Exception as e:
                     print(f"数据处理错误 - 省份: {province}, 值: {value}, 错误: {str(e)}")
+
+            region_data = [{"name": p, "value": v} for p, v in province_value_map.items()]
 
             if not region_data:
                 print("没有有效的数据")
@@ -5640,9 +5684,11 @@ class WelcomeWindow(QMainWindow):
         item = self.function_list.item(index)
         if not item:
             return
-        item_text = item.data(Qt.UserRole) or item.text().split('\n')[0]
-        if item_text == "用户管理":
-            self.user_management_window = UserManagementWindow(self)
+        title = item.data(Qt.UserRole)
+        if title == "用户管理":
+            if not hasattr(self, 'user_management_window') or self.user_management_window is None:
+                self.user_management_window = UserManagementWindow(self)
             self.user_management_window.show()
             return
-        # 其他功能切换逻辑...
+        # 其它功能，切换内容页
+        self.content_stack.setCurrentIndex(index)

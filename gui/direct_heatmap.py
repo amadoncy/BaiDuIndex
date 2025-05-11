@@ -1,10 +1,3 @@
-"""
-简化版热力图渲染函数 - 直接使用CDN
-
-此文件包含一个简化版的热力图渲染函数，直接从CDN加载ECharts和中国地图，
-用户可以将此函数替换到main_window.py中。
-"""
-
 def update_region_heatmap_view(self, region_data, max_value):
     """显示地域分布热力图视图"""
     try:

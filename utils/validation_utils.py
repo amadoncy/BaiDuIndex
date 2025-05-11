@@ -4,6 +4,7 @@ import redis
 import logging
 from config.redis_config import REDIS_CONFIG
 
+
 class ValidationUtils:
     def __init__(self):
         self.redis_client = redis.Redis(**REDIS_CONFIG)
@@ -16,31 +17,31 @@ class ValidationUtils:
         """
         strength = 0
         tips = []
-        
+
         # 长度检查
         if len(password) < 6:
             tips.append("密码长度至少需要6位")
         elif len(password) >= 12:
             strength += 1
-            
+
         # 包含数字
         if re.search(r"\d", password):
             strength += 1
         else:
             tips.append("建议包含数字")
-            
+
         # 包含字母
         if re.search(r"[a-zA-Z]", password):
             strength += 1
         else:
             tips.append("建议包含字母")
-            
+
         # 包含特殊字符
         if re.search(r"[^a-zA-Z0-9]", password):
             strength += 1
         else:
             tips.append("建议包含特殊字符")
-            
+
         # 计算最终强度
         if strength <= 1:
             level = 0
@@ -54,7 +55,7 @@ class ValidationUtils:
             level = 2
             if not tips:
                 tips.append("密码强度较强")
-            
+
         return level, "，".join(tips)
 
     def validate_phone(self, phone):
@@ -119,4 +120,4 @@ class ValidationUtils:
         if stored_code:
             self.redis_client.delete(key)
             return stored_code == code
-        return False 
+        return False

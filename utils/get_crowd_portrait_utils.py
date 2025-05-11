@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pyecharts import options as opts
 from pyecharts.charts import Bar, Line, Tab
 
+# 从数据库获取省份代码映射
 def get_province_codes():
     """从数据库获取省份代码映射"""
     db = None
@@ -17,18 +18,6 @@ def get_province_codes():
     try:
         db = DatabaseConnection()
         cursor = db.connection.cursor()
-        
-        # 先检查表结构
-        cursor.execute("DESCRIBE area_codes")
-        columns = [column[0] for column in cursor.fetchall()]
-        print("area_codes表的列结构:", columns)
-        
-        # 获取所有省份映射数据并打印
-        cursor.execute("SELECT * FROM area_codes WHERE city = 'NULL' OR city IS NULL")
-        results = cursor.fetchall()
-        print("\n当前数据库中的省份映射:")
-        for row in results:
-            print(f"ID: {row[0]}, Region: {row[1]}, Province: {row[2]}, City: {row[3]}, Code: {row[4]}")
         
         # 获取省份代码映射
         query = """
@@ -40,11 +29,27 @@ def get_province_codes():
         results = cursor.fetchall()
         
         # 构建代码到省份名称的映射字典
-        code_map = {str(code): name for code, name in results}
-        print("\n最终生成的省份代码映射字典:")
-        for code, name in code_map.items():
-            print(f"代码 {code} -> 省份 {name}")
+        code_map = {}
+        for code, province in results:
+            # 处理省份名称
+            province_name = province
+            if '省' in province_name:
+                province_name = province_name.replace('省', '')
+            if '市' in province_name:
+                province_name = province_name.replace('市', '')
+            if '自治区' in province_name:
+                province_name = province_name.replace('自治区', '')
+            if '特别行政区' in province_name:
+                province_name = province_name.replace('特别行政区', '')
+            # 特殊处理西藏和台湾
+            if province_name == '西藏自治区':
+                province_name = '西藏'
+            if province_name == '台湾省':
+                province_name = '台湾'
             
+            code_map[str(code)] = province_name
+        
+        print(f"获取到的省份代码映射: {code_map}")
         return code_map
         
     except Exception as e:
@@ -57,43 +62,8 @@ def get_province_codes():
         if db:
             db.close()
 
-# 百度指数省份代码映射
-CODE2PROVINCE = {
-    "901": "山东",
-    "902": "安徽",
-    "903": "江西",
-    "904": "重庆",
-    "905": "内蒙古",
-    "906": "海南",
-    "907": "贵州",
-    "908": "宁夏",
-    "909": "福建",
-    "910": "上海",
-    "911": "北京",
-    "912": "广西",
-    "913": "广东",
-    "914": "四川",
-    "915": "山西",
-    "916": "江苏",
-    "917": "浙江",
-    "918": "青海",
-    "919": "黑龙江",
-    "920": "河北",
-    "921": "吉林",
-    "922": "辽宁",
-    "923": "天津",
-    "924": "陕西",
-    "925": "河南",
-    "926": "新疆",
-    "927": "湖南",
-    "928": "湖北",
-    "929": "云南",
-    "930": "西藏",
-    "931": "甘肃",
-    "932": "青海",
-    "933": "宁夏",
-    "934": "西藏"
-}
+# 使用数据库中的代码映射
+CODE2PROVINCE = get_province_codes()
 
 # 兴趣分类
 INTEREST_CATEGORIES = [
@@ -629,7 +599,7 @@ def get_crowd_portrait_data(keyword, save_dir):
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'zh-CN,zh;q=0.9',
             'Connection': 'keep-alive',
-            'Cookie':'BAIDUID=16E5CCC1192556FEE10159406A018509:FG=1; BIDUPSID=16E5CCC1192556FEE10159406A018509; PSTM=1739958453; H_WISE_SIDS_BFESS=62035_62112_62184_62186_62181_62196_62283_62326; MAWEBCUID=web_KXhXVnlpLhbQQSRCKRRisqqVaKJnMgKZIetEZOUCvCGytOiTJG; H_WISE_SIDS=61027_61674_62342_62426_62473_62500_62457_62455_62452_62451_62327_62644_62673_62704_62618_62520_62330_62773; BAIDUID_BFESS=16E5CCC1192556FEE10159406A018509:FG=1; ZFY=j3Dsz2JVStj8D7DQauQBTBbdC:BZ4rAe8jEh1w:BLfZCo:C; H_PS_PSSID=61027_61674_62342_62327_62646_62704_62520_62330_62827_62842_62869; BA_HECTOR=008181a000a08l8la1858021a6iujd1jv6nj523; PSINO=1; delPer=0; BDORZ=B490B5EBF6F3CD402E515D22BCDA1598; BRAND_LANDING_FROM_PAGE=2231_0_1744002666; BCLID=9555134227461541508; BCLID_BFESS=9555134227461541508; BDSFRCVID=MJFOJexroGWUYtoJPnJ9uxWAWcpWxY5TDYrELPfiaimDVu-Vd6BEEG0Pts1-dEu-S2EwogKKXgOTHwtF_2uxOjjg8UtVJeC6EG0Ptf8g0M5; BDSFRCVID_BFESS=MJFOJexroGWUYtoJPnJ9uxWAWcpWxY5TDYrELPfiaimDVu-Vd6BEEG0Pts1-dEu-S2EwogKKXgOTHwtF_2uxOjjg8UtVJeC6EG0Ptf8g0M5; H_BDCLCKID_SF=tRAOoC8-fIvEDRbN2KTD-tFO5eT22-usBmQl2hcHMPoosU3aWJOoyl8HyGrthpbCQK7j--nwJxbUotoHXh3tMt_thtOp-Crp5ncGKl5TtUJMqIDzbMohqqJXQqJyKMniyIv9-pn5bpQrh459XP68bTkA5bjZKxtq3mkjbPbDfn028DKu-n5jHj3-jN-H3f; H_BDCLCKID_SF_BFESS=tRAOoC8-fIvEDRbN2KTD-tFO5eT22-usBmQl2hcHMPoosU3aWJOoyl8HyGrthpbCQK7j--nwJxbUotoHXh3tMt_thtOp-Crp5ncGKl5TtUJMqIDzbMohqqJXQqJyKMniyIv9-pn5bpQrh459XP68bTkA5bjZKxtq3mkjbPbDfn028DKu-n5jHj3-jN-H3f; Hm_lvt_d101ea4d2a5c67dab98251f0b5de24dc=1743211135,1743406925,1743486520,1744002667; HMACCOUNT=2B879FD6031C4D2D; ppfuid=FOCoIC3q5fKa8fgJnwzbE67EJ49BGJeplOzf+4l4EOvDuu2RXBRv6R3A1AZMa49I27C0gDDLrJyxcIIeAeEhD8JYsoLTpBiaCXhLqvzbzmvy3SeAW17tKgNq/Xx+RgOdb8TWCFe62MVrDTY6lMf2GrfqL8c87KLF2qFER3obJGm51EODDlnqgz44AdUN5VVLGEimjy3MrXEpSuItnI4KD46xh6KcipCBP3WBNo1ZhULgwNSQKKIDdXA6eDfuiw2FJ3ZBF1sLBqLP1Lik2nWCKk4sXpnMWzrlcw817brPPlfGgLbz7OSojK1zRbqBESR5Pdk2R9IA3lxxOVzA+Iw1TWLSgWjlFVG9Xmh1+20oPSbrzvDjYtVPmZ+9/6evcXmhcO1Y58MgLozKnaQIaLfWRHYJbniad6MOTaDR3XV1dTLxUSUZS0ReZYJMPG6nCsxNJlhI2UyeJA6QroZFMelR7tnTNS/pLMWceus0e757/UMPmrThfasmhDJrMFcBfoSrAAv3LCf1Y7/fHL3PTSf9vid/u2VLX4h1nBtx8EF07eCMhWVv+2qjbPV7ZhXk3reaWRFEeso3s/Kc9n/UXtUfNU1sHiCdbrCW5yYsuSM9SPGDZsl7FhTAKw7qIu38vFZiq+DRc8Vbf7jOiN9xPe0lOdZHUhGHZ82rL5jTCsILwcRVCndrarbwmu7G154MpYiKmTXZkqV7Alo4QZzicdyMbWvwvmR2/m//YVTM8qeZWgDSHjDmtehgLWM45zARbPujeqU0T92Gmgs89l2htrSKIVfEFzbtyzdes2f7rMR3DsT9s7hrTTo9fvI0eb7EXkrl28iVHWejeTfeu67KQzKLYpdImdyxYIjA1uSy2hfTFv/d3cnXH4nh+maaicAPllDg7JjsxZAfQoVAycJHizlQ5d34k8SzMID0x3kxnXwHfxXvz6DS3RnKydYTBUIWPYKJAEFefnSer1pU55Mw3PEJuMbPGO6Per4Y9UBohIIx5FdrGRChHnhPuJeIKACPXiVuli9ItRLEkdb1mLxNHAk3uJy88YX/Rf/sKUjR12zxRTDxxJNDJS+Dlsbqu3n4I65ujli/3rQ8Zk1MjmTOsz9+kTqOM4upsnQ6IWq/zeZTItMCgHpQhuhr4ip73honuzoJgge1cqWBFYvpabAPTOERTOP1kmx5SXPARX5uxyJzAiNILBC8zh7fGfNXOWV37O9gPNcivn6S9fB2Uhzqxb280Sz1OqOlLYK4Zd6grclXRmzd7jwWSX9V/ksh8wlbKD1hqmFU2Ekb/vTs/YZwJiVxHg==; BDUSS=h-Z1BVaDB-fmdRSUNudk1acUZrV25xdEcwVndTcUtPZGRyRFU5di1zZHc2eHBvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHBe82dwXvNnZU; SIGNIN_UC=70a2711cf1d3d9b1a82d2f87d633bd8a049401512229aeUGBW7uO3sKds%2BnEQFkaYrBwOLd4jkEUzW03xTHj4wfP5o0yLjHUwD5yLQS7ieWKVBFOpAla%2FkWVUqx%2FvXrPZNKZQeRN93Xo9rWj2eYDaKskJdFKnDfhfeYrGqDJNM95JMzxnDL%2FJ4v%2BjMkZz9Q1kTgD4Vq%2BWRqHon04wNtqIZjWYMKbRLIgfFnoIs%2FU5IusEz08eFrWauSNOn5NOQ8SkYfjEu%2FyFdDKscZOEf%2FMgBbiT4ghV5saGRaDOFp%2BBEVmHnfNO9Hr%2Fxp4x0NYFpYPqhhOfklrEpYGkeNsBVbrQ%3D32729740383291200009764587538236; __cas__rn__=494015122; __cas__st__212=c9292e7efe55d9da1b4ded910007f2b87558a15406c925e6102dd599f239519fe8274c3d24f2081a8825e8db; __cas__id__212=60952149; CPTK_212=1818205581; CPID_212=60952149; bdindexid=i2p7bu7uec6fkv2nst7ghbmbv2; ab_sr=1.0.1_Yjk4MTJmOTIzYTYwZTcwOTdhMjc2MDVlM2FkMDlhZmM4OGQwZGE5ZjY0OTdhZDVhMWM4NTNlYzRhNzhlMDhhODkzNzBmYzQ4ZDFhZGJjOTg2OTYzMTg5ODZkODk5N2NhOWNmNWJhMTNjNWVhMGRkMjEzMWE4YWFiMTNiMTRkN2E4YTczYTRjZWUwMjY3YjgyNjEyZjNjYWQ4MjYxNjY5Yg==; RT="z=1&dm=baidu.com&si=902398b9-828b-4416-824b-28e4efb8592f&ss=m96m5pqh&sl=4&tt=6l2&bcn=https%3A%2F%2Ffclog.baidu.com%2Flog%2Fweirwood%3Ftype%3Dperf"; Hm_lpvt_d101ea4d2a5c67dab98251f0b5de24dc=1744002683',
+            'Cookie':'BAIDUID=34CB65A4C9458D3BBB52E00A0D69A789:FG=1; BIDUPSID=34CB65A4C9458D3BBB52E00A0D69A789; PSTM=1744952492; BAIDUID_BFESS=34CB65A4C9458D3BBB52E00A0D69A789:FG=1; ZFY=ATeXDuugsZG50THi:B:BkA0Z9mWQgq:Bbx2GM8qlA2im0s:C; newlogin=1; BDUSS=dVZmJtcXZ1NjdNSTdOYk93OVFUbWxVam9rOFppc1RPNkppVWtHMjhWY1AzRGRvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA9PEGgPTxBoRl; H_PS_PSSID=61027_62484_62327_62891_62928_62967_63019_63042_63046_63034_63146_63091; BA_HECTOR=242h2k85200g04a1al840g2k8m98if1k1ivth22; BDRCVFR[feWj1Vr5u3D]=I67x6TjHwwYf0; PSINO=6; delPer=0; BDORZ=B490B5EBF6F3CD402E515D22BCDA1598; BCLID=10336332024730948513; BCLID_BFESS=10336332024730948513; BDSFRCVID=q4_OJexroGWgCqbsyqHzT92lNQpWxY5TDYrELPfiaimDVu-VvXWoEG0Pts1-dEu-S2EwogKKXgOTHw0F_2uxOjjg8UtVJeC6EG0Ptf8g0M5; BDSFRCVID_BFESS=q4_OJexroGWgCqbsyqHzT92lNQpWxY5TDYrELPfiaimDVu-VvXWoEG0Pts1-dEu-S2EwogKKXgOTHw0F_2uxOjjg8UtVJeC6EG0Ptf8g0M5; H_BDCLCKID_SF=tRAOoC8-fIvDqTrP-trf5DCShUFsbt6iB2Q-XPoO3M3JEPjPKnray5t7eH5QWqojQ5bk_xbgy4op8P3y0bb2DUA1y4vp-qvUa2TxoUJ2-KDVeh5Gqq-KQJ-ebPRiXPb9QgbfopQ7tt5W8ncFbT7l5hKpbt-q0x-jLTnhVn0MBCK0hD89Dj-Ke5PthxO-hI6aKC5bL6rJabC3qDb3XU6q2bDeQnJM3boa-55DaPcmfCoS8xjx3n7Zjq0vWq54WpOh2C60WlbCb664fxn5hUonDh83KNLLKUQtHGAHK43O5hvvob3O3M7bDMKmDloOW-TB5bbPLUQF5l8-sq0x0bOte-bQXH_E5bj2qRuDoK8K3f; H_BDCLCKID_SF_BFESS=tRAOoC8-fIvDqTrP-trf5DCShUFsbt6iB2Q-XPoO3M3JEPjPKnray5t7eH5QWqojQ5bk_xbgy4op8P3y0bb2DUA1y4vp-qvUa2TxoUJ2-KDVeh5Gqq-KQJ-ebPRiXPb9QgbfopQ7tt5W8ncFbT7l5hKpbt-q0x-jLTnhVn0MBCK0hD89Dj-Ke5PthxO-hI6aKC5bL6rJabC3qDb3XU6q2bDeQnJM3boa-55DaPcmfCoS8xjx3n7Zjq0vWq54WpOh2C60WlbCb664fxn5hUonDh83KNLLKUQtHGAHK43O5hvvob3O3M7bDMKmDloOW-TB5bbPLUQF5l8-sq0x0bOte-bQXH_E5bj2qRuDoK8K3f; Hm_lvt_d101ea4d2a5c67dab98251f0b5de24dc=1745899248,1746501632; HMACCOUNT=7B93E42C07B9C9DD; bdindexid=pgdnfg3640mbfrou4hue1q5eg5; SIGNIN_UC=70a2711cf1d3d9b1a82d2f87d633bd8a049651408668FCr%2Bmjh%2BAk9bI%2Ft6kgzdGY1IOGUFaPKpA%2BYhjGy3yqCK2Z6tdylLhBciOWODCzleUqB2rtRYCXdZ8h1b3vjbioV30JY7eHTM2lDrolosHQGewxb%2BUZFeyTALzi9LY9Uk1oR9GRoxHQwmsGVumRwfCtNTKVcPwGH3USm7T9dlTqvfUvRIPSCZvU2%2FPyabb%2Bvic%2BZMoc9T15HraZCt624nyiKYAE5xoZRvvHlnwW2%2B%2FVHWiYrgJeUjngZCWrWb0r6cS76jubYQlnwU0LZafsYMzvnKudh%2FvXv2S4xzFZkX%2Fg%3D33179532768309692389450509778821; __cas__rn__=496514086; __cas__st__212=bdab102f0e0580291917d7b79726d13836fbf11e124d7913546801e155ae1c33147c8e1f6da59533fd96a932; __cas__id__212=60952149; CPTK_212=2088851321; CPID_212=60952149; RT="z=1&dm=baidu.com&si=db374730-829b-477c-bc2f-a2f0aa2cced9&ss=mabxz79e&sl=h&tt=dne&bcn=https%3A%2F%2Ffclog.baidu.com%2Flog%2Fweirwood%3Ftype%3Dperf"; Hm_lpvt_d101ea4d2a5c67dab98251f0b5de24dc=1746502360; BDUSS_BFESS=dVZmJtcXZ1NjdNSTdOYk93OVFUbWxVam9rOFppc1RPNkppVWtHMjhWY1AzRGRvSVFBQUFBJCQAAAAAAQAAAAEAAAAVucsnQW1kb27YvEN5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA9PEGgPTxBoRl; ab_sr=1.0.1_ZGVhOTkxM2VlZTQ5MmUzYTRjYTBiMmRhZmQ2NDA3OWUyMmU1MjFhMzc5OWMzM2YyMzMwNTBkZmRkYjgwZjU4Yzc3ZDhmMDIxM2E1MmJlODBhOTkzNDdiNGYyNjlmMjEzNjk1MTE5YTE5YTJlMDBmNTYzYmVkOTQ1OGVjZThhMDdkMmFmZGFmMmE0M2FjMzQ2MDljY2QyYzFmNzRiM2IzYg==',
             'Host': 'index.baidu.com',
             'Referer': 'https://index.baidu.com/v2/main/index.html',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
@@ -645,43 +615,61 @@ def get_crowd_portrait_data(keyword, save_dir):
             end_date = current_time - timedelta(days=1)  # 截止到昨天
             start_date = end_date - timedelta(days=6)    # 往前推6天，总共7天
             
+            print(f"\n使用日期范围: {start_date.strftime('%Y-%m-%d')} 到 {end_date.strftime('%Y-%m-%d')}")
+            
             region_url = f"https://index.baidu.com/api/SearchApi/region?region=0&word={quote(keyword)}&startDate={start_date.strftime('%Y-%m-%d')}&endDate={end_date.strftime('%Y-%m-%d')}"
             print(f"请求区域分布数据: {region_url}")
 
-            for key, value in headers.items():
-                if key.lower() != 'cookie':
-                    print(f"{key}: {value}")
-                else:
-                    print(f"{key}: [已隐藏]")
-
             region_response = requests.get(region_url, headers=headers)
-            region_data = region_response.json()
-
+            print(f"\nAPI响应状态码: {region_response.status_code}")
+            print(f"API响应头: {dict(region_response.headers)}")
             
+            region_data = region_response.json()
+            print(f"\n完整API响应: {json.dumps(region_data, ensure_ascii=False, indent=2)}")
+            
+            # 检查登录状态
+            if region_data.get('status') == 10000:
+                print("登录状态已失效，请更新Cookie")
+                return False
+                
             if region_data.get('status') == 0 and region_data.get('data'):
                 try:
                     region_info = region_data['data']['region'][0]
-                    if region_info.get('prov_real') or region_info.get('city_real'):
-                        # 处理省份数据
-                        if region_info.get('prov_real'):
-                            formatted_region_data = []
-                            prov_real = region_info['prov_real']
-                            for code, value in prov_real.items():
-                                province_name = CODE2PROVINCE.get(str(code), '未知')
-                                formatted_region_data.append({
-                                    'province': province_name,
-                                    'value': int(value)
-                                })
-                            
-                            # 保存区域分布数据到数据库
-                            if save_region_data_to_db(formatted_region_data, keyword, end_date):
-                                print("区域分布数据已保存到数据库")
-                            
-                            # 保存到Excel
-                            df = pd.DataFrame(formatted_region_data)
-                            excel_path = os.path.join(portrait_dir, f"{keyword}_区域分布_{end_date.strftime('%Y%m')}.xlsx")
-                            df.to_excel(excel_path, index=False)
-                            print(f"区域分布数据已保存到Excel: {excel_path}")
+                    # 使用prov字段，因为这是最原始的省份数据
+                    if region_info.get('prov'):
+                        formatted_region_data = []
+                        prov_data = region_info['prov']
+                        
+                        # 打印原始数据用于调试
+                        print("\nAPI返回的原始数据:")
+                        for code, value in sorted(prov_data.items()):  # 按代码排序
+                            print(f"代码 {code}: {value}")
+                        
+                        # 直接使用API返回的数据
+                        for code, value in prov_data.items():
+                            province_name = CODE2PROVINCE.get(str(code), '未知')
+                            formatted_region_data.append({
+                                'province': province_name,
+                                'value': value  # 保持原始值，不进行任何转换
+                            })
+                        
+                        # 按省份名称排序
+                        formatted_region_data.sort(key=lambda x: x['province'])
+                        
+                        # 打印处理后的数据用于调试
+                        print("\n处理后的数据:")
+                        for item in formatted_region_data:
+                            print(f"省份: {item['province']}, 值: {item['value']}")
+                        
+                        # 保存区域分布数据到数据库
+                        if save_region_data_to_db(formatted_region_data, keyword, end_date):
+                            print("区域分布数据已保存到数据库")
+                        
+                        # 保存到Excel
+                        df = pd.DataFrame(formatted_region_data)
+                        excel_path = os.path.join(portrait_dir, f"{keyword}_区域分布_{end_date.strftime('%Y%m')}.xlsx")
+                        df.to_excel(excel_path, index=False)
+                        print(f"区域分布数据已保存到Excel: {excel_path}")
                     else:
                         print("区域分布数据为空，跳过保存")
                 except (KeyError, IndexError) as e:

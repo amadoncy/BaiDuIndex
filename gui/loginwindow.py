@@ -188,6 +188,9 @@ class LoginWindow(QMainWindow):
         self.captcha_manager = CaptchaManager()
         self.current_captcha_id = None
 
+        # 检查并创建默认管理员账号
+        self.create_default_admin()
+
         # 绑定登录按钮点击事件
         self.ui.pushButton.clicked.connect(self.handle_login)
 
@@ -208,6 +211,23 @@ class LoginWindow(QMainWindow):
 
         # 延迟执行自动登录
         QTimer.singleShot(1000, self.check_auto_login)
+
+    def create_default_admin(self):
+        """创建默认管理员账号"""
+        try:
+            cursor = self.db.connection.cursor()
+            # 检查是否存在管理员账号
+            cursor.execute("SELECT id FROM users WHERE username = 'admin'")
+            if not cursor.fetchone():
+                # 创建默认管理员账号
+                cursor.execute("""
+                    INSERT INTO users (username, password, phone, email, role)
+                    VALUES ('admin', 'admin123', '13800138000', 'admin@example.com', 'admin')
+                """)
+                self.db.connection.commit()
+                logging.info("默认管理员账号创建成功")
+        except Exception as e:
+            logging.error(f"创建默认管理员账号失败: {str(e)}")
 
     def check_auto_login(self):
         """检查是否需要自动登录"""

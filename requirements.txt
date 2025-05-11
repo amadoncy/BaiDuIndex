@@ -6,8 +6,8 @@ requests~=2.32.3
 urllib3~=2.3.0
 PyMySQL==1.1.0
 redis==5.0.1
-Pillow==11.1.0  # 用于生成图片验证码
-captcha==0.5.0  # 验证码生成库 
+Pillow==11.1.0
+captcha==0.5.0
 pyowm==3.3.0
 pyecharts~=2.0.8
 openpyxl~=3.1.5
@@ -15,5 +15,5 @@ numpy~=2.2.3
 tensorflow~=2.19.0
 scikit-learn~=1.6.1
 matplotlib~=3.10.1
-seaborn~=0.13.2  # 用于数据可视化
-PyQtWebEngine==5.15.6  # 用于显示HTML可视化
+seaborn~=0.13.2
+PyQtWebEngine==5.15.6
