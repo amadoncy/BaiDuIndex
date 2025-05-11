@@ -2108,10 +2108,48 @@ class WelcomeWindow(QMainWindow):
         trend_layout.setContentsMargins(0, 0, 0, 0)
         trend_layout.setSpacing(0)
 
+        # 地区下拉框
+        area_layout = QHBoxLayout()
+        area_label = QLabel("地区:")
+        area_label.setStyleSheet("color: white;")
+        self.trend_area_combo = QComboBox()
+        self.trend_area_combo.setStyleSheet("""
+            QComboBox {
+                padding: 5px;
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                color: white;
+            }
+        """)
+        self.trend_area_refresh_btn = QPushButton("刷新")
+        self.trend_area_refresh_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border-radius: 5px;
+                padding: 5px 15px;
+            }
+            QPushButton:hover {
+                background-color: #42A5F5;
+            }
+        """)
+        self.trend_area_refresh_btn.clicked.connect(self.refresh_trend_area_combo)
+        # 初次加载
+        self.refresh_trend_area_combo()
+        area_layout.addWidget(area_label)
+        area_layout.addWidget(self.trend_area_combo)
+        area_layout.addWidget(self.trend_area_refresh_btn)
+        area_layout.addStretch()
+        trend_layout.addLayout(area_layout)
+
         # 创建趋势图表显示区域
         self.trend_view = QWebEngineView()
         self.trend_view.setMinimumHeight(600)
         trend_layout.addWidget(self.trend_view)
+
+        # 地区切换时刷新趋势
+        self.trend_area_combo.currentIndexChanged.connect(self.refresh_trend_chart_by_area)
 
         # 添加趋势分析标签页
         self.analysis_tabs.addTab(trend_tab, "趋势分析")
@@ -2136,6 +2174,256 @@ class WelcomeWindow(QMainWindow):
 
         layout.addWidget(self.analysis_tabs)
         return page
+
+    def refresh_trend_area_combo(self):
+        """从数据库重新加载所有area选项"""
+        try:
+            from utils.db_utils import get_connection
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT area FROM baidu_index_trends ORDER BY area")
+            areas = [row[0] for row in cursor.fetchall() if row[0]]
+            conn.close()
+            if not areas:
+                areas = ["全国"]
+        except Exception as e:
+            print(f"加载地区失败: {e}")
+            areas = ["全国"]
+        self.trend_area_combo.clear()
+        self.trend_area_combo.addItems(areas)
+        print("下拉框地区选项：", areas)
+
+    def refresh_trend_chart_by_area(self):
+        """切换地区时刷新趋势图"""
+        # 重新分析趋势数据，传递当前地区
+        keyword = self.keyword_input.text() if hasattr(self, 'keyword_input') else None
+        area = self.trend_area_combo.currentText() if hasattr(self, 'trend_area_combo') else "全国"
+        if not keyword:
+            return
+        try:
+            connection = db_utils.get_connection()
+            cursor = connection.cursor()
+            # 获取最新日期
+            date_query = """
+            SELECT DISTINCT date FROM baidu_index_trends WHERE keyword = %s AND area = %s ORDER BY date DESC LIMIT 1
+            """
+            cursor.execute(date_query, (keyword, area))
+            latest_date = cursor.fetchone()
+            if not latest_date:
+                return
+            selected_date = latest_date[0]
+            if selected_date and hasattr(selected_date, 'strftime'):
+                selected_date = selected_date.strftime('%Y-%m-%d')
+            elif selected_date and isinstance(selected_date, str):
+                pass
+            else:
+                selected_date = str(selected_date)
+            self.analyze_trend_data(cursor, keyword, selected_date, area)
+            cursor.close()
+            connection.close()
+        except Exception as e:
+            print(f"切换地区趋势失败: {e}")
+
+    def analyze_trend_data(self, cursor, keyword, date, area=None):
+        """分析趋势数据，支持按地区筛选"""
+        try:
+            # 查询趋势数据
+            if area:
+                query = """
+                SELECT date, index_value, area 
+                FROM baidu_index_trends 
+                WHERE keyword = %s AND area = %s
+                ORDER BY date
+                """
+                cursor.execute(query, (keyword, area))
+            else:
+                query = """
+                SELECT date, index_value, area 
+                FROM baidu_index_trends 
+                WHERE keyword = %s 
+                ORDER BY date
+                """
+                cursor.execute(query, (keyword,))
+            results = cursor.fetchall()
+
+            if not results:
+                return
+
+            # 处理数据 - 显示更多数据点并优化最近数据
+            total_points = len(results)
+            sample_size = min(total_points, 300)
+            if total_points <= sample_size:
+                dates = []
+                values = []
+                for row in results:
+                    if row[0] and hasattr(row[0], 'strftime'):
+                        dates.append(row[0].strftime('%Y-%m-%d'))
+                    else:
+                        dates.append(str(row[0]))
+                    values.append(float(row[1]) if row[1] is not None else 0)
+            else:
+                early_data_count = total_points // 3
+                recent_data_count = total_points - early_data_count
+                early_sample_size = min(early_data_count, sample_size - recent_data_count)
+                early_step = max(1, early_data_count // early_sample_size)
+                dates = []
+                values = []
+                for i in range(0, early_data_count, early_step):
+                    row = results[i]
+                    if row[0] and hasattr(row[0], 'strftime'):
+                        dates.append(row[0].strftime('%Y-%m-%d'))
+                    else:
+                        dates.append(str(row[0]))
+                    values.append(float(row[1]) if row[1] is not None else 0)
+                for i in range(early_data_count, total_points):
+                    row = results[i]
+                    if row[0] and hasattr(row[0], 'strftime'):
+                        dates.append(row[0].strftime('%Y-%m-%d'))
+                    else:
+                        dates.append(str(row[0]))
+                    values.append(float(row[1]) if row[1] is not None else 0)
+
+            # 使用pyecharts创建趋势图
+            line = Line(init_opts=opts.InitOpts(
+                width="100%",
+                height="800px",
+                bg_color="#1a237e",
+                renderer="canvas",
+                animation_opts=opts.AnimationOpts(animation=False)
+            ))
+            line.add_xaxis(dates)
+            line.add_yaxis(
+                keyword,
+                values,
+                is_smooth=False,
+                symbol="none",
+                label_opts=opts.LabelOpts(is_show=False),
+                linestyle_opts=opts.LineStyleOpts(
+                    width=2,
+                    type_="solid",
+                    color="#4FC3F7"
+                )
+            )
+            line.set_global_opts(
+                title_opts=opts.TitleOpts(
+                    title=f"{keyword}搜索趋势（{area if area else '全部地区'}）",
+                    subtitle="数据来源：百度指数",
+                    pos_left="center",
+                    title_textstyle_opts=opts.TextStyleOpts(
+                        color="#FFFFFF",
+                        font_size=20
+                    ),
+                    subtitle_textstyle_opts=opts.TextStyleOpts(
+                        color="#B0BEC5",
+                        font_size=12
+                    )
+                ),
+                tooltip_opts=opts.TooltipOpts(
+                    trigger="axis",
+                    axis_pointer_type="line",
+                    background_color="rgba(50,50,50,0.7)",
+                    border_color="#ccc",
+                    textstyle_opts=opts.TextStyleOpts(color="#fff")
+                ),
+                toolbox_opts=opts.ToolboxOpts(
+                    is_show=True,
+                    pos_left="right",
+                    feature={
+                        "dataZoom": {"yAxisIndex": "none"},
+                        "restore": {},
+                        "saveAsImage": {}
+                    }
+                ),
+                xaxis_opts=opts.AxisOpts(
+                    type_="category",
+                    boundary_gap=False,
+                    axislabel_opts=opts.LabelOpts(
+                        rotate=45,
+                        color="#B0BEC5",
+                        interval="auto",
+                        margin=8
+                    ),
+                    axisline_opts=opts.AxisLineOpts(
+                        linestyle_opts=opts.LineStyleOpts(color="#B0BEC5")
+                    ),
+                    splitline_opts=opts.SplitLineOpts(is_show=False)
+                ),
+                yaxis_opts=opts.AxisOpts(
+                    type_="value",
+                    name="搜索指数",
+                    name_textstyle_opts=opts.TextStyleOpts(color="#B0BEC5"),
+                    axislabel_opts=opts.LabelOpts(color="#B0BEC5"),
+                    axisline_opts=opts.AxisLineOpts(
+                        linestyle_opts=opts.LineStyleOpts(color="#B0BEC5")
+                    ),
+                    splitline_opts=opts.SplitLineOpts(is_show=False)
+                ),
+                datazoom_opts=[
+                    opts.DataZoomOpts(
+                        is_show=True,
+                        type_="slider",
+                        # 默认只显示最近30%的数据
+                        range_start=70,
+                        range_end=100,
+                        pos_bottom="5%"
+                    ),
+                    # 添加内部框选区域缩放组件
+                    opts.DataZoomOpts(
+                        type_="inside"
+                    )
+                ],
+                legend_opts=opts.LegendOpts(
+                    is_show=False
+                )
+            )
+
+            # 优化HTML模板
+            custom_css = """
+            <style>
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: #1a237e;
+                }
+                .chart-container {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                }
+                #chart {
+                    width: 100% !important;
+                    height: 800px !important;
+                }
+            </style>
+            """
+
+            # 简化HTML内容
+            final_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                {custom_css}
+            </head>
+            <body>
+                <div class="chart-container">
+                    <div id="chart">
+                        {line.render_embed()}
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            # 将图表渲染到HTML并显示
+            self.trend_view.setHtml(final_html)
+
+        except Exception as e:
+            logging.error(f"分析趋势数据失败: {str(e)}")
+            raise
 
     def init_portrait_tab(self):
         """初始化人群画像标签页"""
@@ -3260,215 +3548,6 @@ class WelcomeWindow(QMainWindow):
             if 'connection' in locals():
                 connection.close()
 
-    def analyze_trend_data(self, cursor, keyword, date):
-        """分析趋势数据"""
-        try:
-            # 查询趋势数据
-            query = """
-            SELECT date, index_value, area 
-            FROM baidu_index_trends 
-            WHERE keyword = %s 
-            ORDER BY date
-            """
-            cursor.execute(query, (keyword,))
-            results = cursor.fetchall()
-
-            if not results:
-                return
-
-            # 处理数据 - 显示更多数据点并优化最近数据
-            total_points = len(results)
-
-            # 增加数据点数量，从100增加到300
-            sample_size = min(total_points, 300)
-
-            # 如果总数据点小于或等于300，直接全部显示
-            if total_points <= sample_size:
-                dates = []
-                values = []
-                for row in results:
-                    if row[0] and hasattr(row[0], 'strftime'):
-                        dates.append(row[0].strftime('%Y-%m-%d'))
-                    else:
-                        dates.append(str(row[0]))
-                    values.append(float(row[1]) if row[1] is not None else 0)
-            else:
-                # 优先显示最近的数据，并在早期数据中采样
-                # 计算前1/3的数据进行采样，后2/3的数据全部显示
-                early_data_count = total_points // 3
-                recent_data_count = total_points - early_data_count
-
-                # 采样早期数据
-                early_sample_size = min(early_data_count, sample_size - recent_data_count)
-                early_step = max(1, early_data_count // early_sample_size)
-
-                dates = []
-                values = []
-
-                # 对早期数据进行采样
-                for i in range(0, early_data_count, early_step):
-                    row = results[i]
-                    if row[0] and hasattr(row[0], 'strftime'):
-                        dates.append(row[0].strftime('%Y-%m-%d'))
-                    else:
-                        dates.append(str(row[0]))
-                    values.append(float(row[1]) if row[1] is not None else 0)
-
-                # 显示全部最近数据
-                for i in range(early_data_count, total_points):
-                    row = results[i]
-                    if row[0] and hasattr(row[0], 'strftime'):
-                        dates.append(row[0].strftime('%Y-%m-%d'))
-                    else:
-                        dates.append(str(row[0]))
-                    values.append(float(row[1]) if row[1] is not None else 0)
-
-            # 使用pyecharts创建趋势图
-            line = Line(init_opts=opts.InitOpts(
-                width="100%",
-                height="800px",
-                bg_color="#1a237e",
-                renderer="canvas",  # 使用canvas渲染器提高性能
-                animation_opts=opts.AnimationOpts(animation=False)  # 关闭动画提高性能
-            ))
-
-            # 添加数据
-            line.add_xaxis(dates)
-            line.add_yaxis(
-                keyword,
-                values,
-                is_smooth=False,  # 关闭平滑曲线提高性能
-                symbol="none",  # 不显示数据点提高性能
-                label_opts=opts.LabelOpts(is_show=False),  # 不显示标签提高性能
-                linestyle_opts=opts.LineStyleOpts(
-                    width=2,
-                    type_="solid",
-                    color="#4FC3F7"
-                )
-            )
-
-            # 优化全局配置，默认显示最近30%的数据
-            line.set_global_opts(
-                title_opts=opts.TitleOpts(
-                    title=f"{keyword}搜索趋势",
-                    subtitle="数据来源：百度指数",
-                    pos_left="center",
-                    title_textstyle_opts=opts.TextStyleOpts(
-                        color="#FFFFFF",
-                        font_size=20
-                    ),
-                    subtitle_textstyle_opts=opts.TextStyleOpts(
-                        color="#B0BEC5",
-                        font_size=12
-                    )
-                ),
-                tooltip_opts=opts.TooltipOpts(
-                    trigger="axis",
-                    axis_pointer_type="line",  # 使用直线指示器提高性能
-                    background_color="rgba(50,50,50,0.7)",
-                    border_color="#ccc",
-                    textstyle_opts=opts.TextStyleOpts(color="#fff")
-                ),
-                toolbox_opts=opts.ToolboxOpts(
-                    is_show=True,
-                    pos_left="right",
-                    feature={
-                        "dataZoom": {"yAxisIndex": "none"},
-                        "restore": {},
-                        "saveAsImage": {}
-                    }
-                ),
-                xaxis_opts=opts.AxisOpts(
-                    type_="category",
-                    boundary_gap=False,
-                    axislabel_opts=opts.LabelOpts(
-                        rotate=45,
-                        color="#B0BEC5",
-                        interval="auto",  # 自动计算标签间隔
-                        margin=8
-                    ),
-                    axisline_opts=opts.AxisLineOpts(
-                        linestyle_opts=opts.LineStyleOpts(color="#B0BEC5")
-                    ),
-                    splitline_opts=opts.SplitLineOpts(is_show=False)  # 不显示分割线提高性能
-                ),
-                yaxis_opts=opts.AxisOpts(
-                    type_="value",
-                    name="搜索指数",
-                    name_textstyle_opts=opts.TextStyleOpts(color="#B0BEC5"),
-                    axislabel_opts=opts.LabelOpts(color="#B0BEC5"),
-                    axisline_opts=opts.AxisLineOpts(
-                        linestyle_opts=opts.LineStyleOpts(color="#B0BEC5")
-                    ),
-                    splitline_opts=opts.SplitLineOpts(is_show=False)  # 不显示分割线提高性能
-                ),
-                datazoom_opts=[
-                    opts.DataZoomOpts(
-                        is_show=True,
-                        type_="slider",
-                        # 默认只显示最近30%的数据
-                        range_start=70,
-                        range_end=100,
-                        pos_bottom="5%"
-                    ),
-                    # 添加内部框选区域缩放组件
-                    opts.DataZoomOpts(
-                        type_="inside"
-                    )
-                ],
-                legend_opts=opts.LegendOpts(
-                    is_show=False  # 不显示图例提高性能
-                )
-            )
-
-            # 优化HTML模板
-            custom_css = """
-            <style>
-                html, body {
-                    margin: 0;
-                    padding: 0;
-                    width: 100%;
-                    height: 100%;
-                    background-color: #1a237e;
-                }
-                .chart-container {
-                    width: 100%;
-                    height: 100%;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                }
-                #chart {
-                    width: 100% !important;
-                    height: 800px !important;
-                }
-            </style>
-            """
-
-            # 简化HTML内容
-            final_html = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                {custom_css}
-            </head>
-            <body>
-                <div class="chart-container">
-                    <div id="chart">
-                        {line.render_embed()}
-                    </div>
-                </div>
-            </body>
-            </html>
-            """
-
-            # 将图表渲染到HTML并显示
-            self.trend_view.setHtml(final_html)
-
-        except Exception as e:
-            logging.error(f"分析趋势数据失败: {str(e)}")
-            raise
-
     def analyze_portrait_data(self, cursor, keyword, date):
         """分析人群画像数据"""
         try:
@@ -4305,122 +4384,6 @@ class WelcomeWindow(QMainWindow):
             traceback.print_exc()
             return False
 
-    def create_simple_pdf(self, file_path, keyword, report_type):
-        """创建简单的PDF文件，使用reportlab库
-
-        Args:
-            file_path: 保存文件的完整路径
-            keyword: 关键词
-            report_type: 报告类型
-        """
-        try:
-            # 尝试导入reportlab
-            try:
-                from reportlab.pdfgen import canvas
-                from reportlab.lib.pagesizes import A4
-                from reportlab.pdfbase import pdfmetrics
-                from reportlab.pdfbase.ttfonts import TTFont
-                from reportlab.lib.units import inch
-            except ImportError:
-                logging.error("未安装reportlab库，无法创建PDF文件")
-                # 创建备用文本报告
-                fallback_path = self.create_fallback_report(file_path, keyword, report_type)
-                if fallback_path and os.path.exists(fallback_path):
-                    logging.info(f"已创建备用文本报告: {fallback_path}")
-                return False
-
-            # 创建PDF画布
-            c = canvas.Canvas(file_path, pagesize=A4)
-            width, height = A4
-
-            # 尝试注册中文字体
-            try:
-                # 确保字体目录存在
-                self.ensure_font_directory()
-
-                font_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                         "resources", "fonts", "simhei.ttf")
-
-                # 详细记录字体文件信息
-                if os.path.exists(font_path):
-                    file_size = os.path.getsize(font_path)
-                    logging.info(f"找到字体文件: {font_path}, 大小: {file_size} 字节")
-
-                    if file_size > 1000:  # 确保不是空文件或占位符
-                        try:
-                            # 尝试注册字体并记录结果
-                            pdfmetrics.registerFont(TTFont('SimHei', font_path))
-                            has_chinese_font = True
-                            logging.info("成功注册中文字体: SimHei")
-                        except Exception as reg_error:
-                            has_chinese_font = False
-                            logging.error(f"注册字体失败: {str(reg_error)}")
-                    else:
-                        has_chinese_font = False
-                        logging.warning(f"字体文件大小异常 ({file_size} 字节), 可能不是有效的字体文件")
-                else:
-                    has_chinese_font = False
-                    logging.warning(f"中文字体文件不存在: {font_path}")
-            except Exception as font_error:
-                has_chinese_font = False
-                logging.error(f"注册中文字体失败: {str(font_error)}")
-
-            # 设置字体
-            if has_chinese_font:
-                c.setFont("SimHei", 18)
-            else:
-                c.setFont("Helvetica-Bold", 18)
-
-            # 标题
-            title = f"{keyword} {report_type}报告"
-            c.drawCentredString(width / 2, height - 50, title)
-
-            # 生成时间
-            current_time = datetime.now().strftime("%Y年%m月%d日 %H:%M")
-            if has_chinese_font:
-                c.setFont("SimHei", 12)
-            else:
-                c.setFont("Helvetica", 12)
-            c.drawString(50, height - 80, f"生成时间: {current_time}")
-
-            # 报告内容
-            content_y = height - 120
-            c.drawString(50, content_y, "报告内容:")
-            content_y -= 20
-
-            c.drawString(50, content_y, "这是一个简单的测试报告，用于验证文件生成功能。")
-            content_y -= 20
-
-            c.drawString(50, content_y, f"关键词: {keyword}")
-            content_y -= 20
-
-            c.drawString(50, content_y, f"报告类型: {report_type}")
-            content_y -= 20
-
-            # 添加一些示例数据
-            c.drawString(50, content_y, "趋势分析:")
-            content_y -= 20
-
-            c.drawString(70, content_y, f"该关键词搜索趋势呈上升状态")
-            content_y -= 20
-
-            c.drawString(70, content_y, f"主要用户年龄分布: 25-34")
-            content_y -= 20
-
-            c.drawString(70, content_y, f"性别比例: 男性占60%, 女性占40%")
-            content_y -= 20
-
-            # 保存PDF
-            c.save()
-
-            logging.info(f"简单PDF报告已成功生成: {file_path}")
-            return True
-
-        except Exception as e:
-            logging.error(f"创建简单PDF报告失败: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            return False
 
     def ensure_font_directory(self):
         """确保字体目录存在"""

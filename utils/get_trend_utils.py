@@ -234,7 +234,7 @@ def save_data_to_excel(data, keyword):
         # 创建文件名（地名+关键词+采集时间）
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{area_name}_{keyword}_{timestamp}.xlsx"
-        filepath = os.path.join("E:\\BaiDuIndex\\data\\trend", filename)
+        filepath = os.path.join("./data/trend", filename)
         
         # 确保目录存在
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
@@ -405,6 +405,15 @@ def get_missing_dates(db_cursor, keyword, area):
         return None, None
 
 
+def safe_float(val):
+    try:
+        if val is None or val == '' or str(val).lower() == 'nan':
+            return None
+        return float(val)
+    except (ValueError, TypeError):
+        return None
+
+
 def save_data_to_db(data):
     """
     保存数据到数据库，包含数据比对和当天数据检查
@@ -445,7 +454,11 @@ def save_data_to_db(data):
                 date_str = item["日期"].strftime("%Y-%m-%d")
                 keyword = item["关键词"]
                 area = item["地区"]
-                index_value = int(float(item["指数"]))
+                index_value = safe_float(item["指数"])
+                if index_value is None:
+                    # 跳过或存为0
+                    continue
+                index_value = int(index_value)
                 
                 # 检查数据是否已存在
                 cursor.execute("""
@@ -622,18 +635,26 @@ def get_trend_utils(username, keyword, area_code=0, area_name="全国", start_da
         # 处理数据
         result_data = result.split(',')
         start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
-        data_points = len(result_data)
-        total_days = (datetime.strptime(end_date, '%Y-%m-%d').date() - start_date_obj).days + 1
-        points_per_day = data_points / total_days
-
-        # 一次性处理所有数据
-        all_data = []
+        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+        total_days = (end_date_obj - start_date_obj).days + 1
+        # 生成所有日期
+        all_dates = [start_date_obj + pd.Timedelta(days=i) for i in range(total_days)]
+        # 计算每日数据点数
+        points_per_day = len(result_data) / total_days if total_days > 0 else 1
+        # 构建日期到指数的映射
+        date_value_map = {}
         for i, value in enumerate(result_data):
             days_offset = int(i / points_per_day)
             current_date = start_date_obj + pd.Timedelta(days=days_offset)
+            # 只保留最后一个数据点（如果有重复）
+            date_value_map[current_date] = value
+        # 自动补全缺失日期为0
+        all_data = []
+        for d in all_dates:
+            v = date_value_map.get(d, 0)
             all_data.append({
-                "日期": current_date,
-                "指数": value,
+                "日期": d,
+                "指数": v,
                 "地区": area_name,
                 "关键词": keyword
             })
