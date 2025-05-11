@@ -637,32 +637,28 @@ def get_trend_utils(username, keyword, area_code=0, area_name="全国", start_da
         start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
         end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
         total_days = (end_date_obj - start_date_obj).days + 1
-        # 生成所有日期
-        all_dates = [start_date_obj + pd.Timedelta(days=i) for i in range(total_days)]
-        # 计算每日数据点数
+        # 计算每个数据点的日期（假设数据点均匀分布）
         points_per_day = len(result_data) / total_days if total_days > 0 else 1
-        # 构建日期到指数的映射
-        date_value_map = {}
-        for i, value in enumerate(result_data):
+        data_dates = []
+        for i in range(len(result_data)):
             days_offset = int(i / points_per_day)
             current_date = start_date_obj + pd.Timedelta(days=days_offset)
-            # 只保留最后一个数据点（如果有重复）
-            date_value_map[current_date] = value
-        # 自动补全缺失日期为0
+            if current_date > end_date_obj:
+                break
+            data_dates.append(current_date)
+        # 只保留有数据的日期
         all_data = []
-        for d in all_dates:
-            v = date_value_map.get(d, 0)
-            all_data.append({
-                "日期": d,
-                "指数": v,
-                "地区": area_name,
-                "关键词": keyword
-            })
-
+        for d, v in zip(data_dates, result_data):
+            if v and v != '0':
+                all_data.append({
+                    "日期": d,
+                    "指数": v,
+                    "地区": area_name,
+                    "关键词": keyword
+                })
         # 保存数据
         if save_data_to_excel(all_data, keyword):
             save_data_to_db(all_data)
-
         return all_data
 
     except Exception as e:
